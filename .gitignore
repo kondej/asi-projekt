@@ -1,0 +1,38 @@
+# --- Dane: pełne dane nigdy nie trafiają do repozytorium -------------------
+# Ignorujemy wszystko w data/, a potem jawnie przywracamy tylko to, co wolno
+# commitować: katalogi, README.md, .gitkeep i zatwierdzoną próbkę CI.
+/data/**
+!/data/**/
+!/data/**/README.md
+!/data/**/.gitkeep
+!/data/01_raw/sample.csv
+
+# --- Sekrety i konfiguracja lokalna -----------------------------------------
+.env
+.env.*
+!.env.example
+
+# Konfiguracja lokalna Kedro (od Sprintu 2): poświadczenia i ustawienia komputera.
+/conf/local/**
+!/conf/local/README.md
+
+# --- Notebooki i materiały prowadzącej (rozwiązania) -------------------------
+notebooks/teacher/
+*_teacher.ipynb
+*.solution.ipynb
+
+# --- Python i narzędzia ------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.venv/
+
+# --- Systemowe / edytory ---------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/

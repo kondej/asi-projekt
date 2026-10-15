@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "asi-project"
+version = "0.1.0"
+description = "ASI — projekt zespołowy: od danych do systemu ML wdrożonego w chmurze"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+# Zależności zarządza environment.yml (conda); pakiet instalujemy: pip install --no-deps -e .
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+asi_project = ["datasets.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["asi_project"]
