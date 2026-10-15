@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: pre-commit, testy i baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Środowisko conda z environment.yml
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+
+      - name: Instalacja pakietu projektu
+        run: python -m pip install --no-deps -e .
+
+      - name: Wersje bibliotek
+        run: python scripts/check_env.py
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: pytest
+        run: pytest
+
+      - name: Stan projektu
+        id: status
+        run: python scripts/project_status.py | tee -a "$GITHUB_OUTPUT"
+
+      - name: Baseline na próbce CI (notebook 02)
+        if: steps.status.outputs.baseline_done == 'true'
+        env:
+          ASI_DATA_MODE: sample
+          ASI_METRICS_PATH: ${{ runner.temp }}/metrics_ci.json
+          MPLBACKEND: Agg
+        run: |
+          python scripts/run_notebook.py notebooks/02_baseline.ipynb
+          python scripts/check_metrics.py "$ASI_METRICS_PATH" --data-mode sample
+
+      - name: Raport Definition of Done (Sprint 1)
+        if: always()
+        run: python scripts/check_dod.py --sprint 1
+
+      # Future scaffold — kroki kolejnych sprintów (nieaktywne, dopisywane na starcie sprintu):
+      # S2: kedro run --env ci (pipeline'y na próbce CI) i testy nodów (tests/pipelines/)
+      # S3: WANDB_MODE=disabled, test zapisu i odczytu pakietu modelu
+      # S4: testy API (tests/api/) bez prawdziwego modelu i bez prawdziwej bazy
+      # S6 (OPTIONAL): deploy z CI jako osobny workflow

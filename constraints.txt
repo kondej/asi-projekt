@@ -1,0 +1,9 @@
+# Wersje bazowe z environment.yml. Chronią je przed zmianą przy instalacjach pip
+# w pre-flightach (np. AutoGluon nie może po cichu podmienić scikit-learn).
+# Musi być zgodne z environment.yml — pilnuje tego tests/test_environment.py.
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+scipy==1.16.0
+matplotlib==3.10.3
+pyyaml==6.0.2

@@ -1,0 +1,27 @@
+# Środowisko projektu ASI — Sprint 1. Jedno środowisko conda: asi-ml.
+#
+# Aktualizacja środowiska z onboardingu:
+#   conda env update -n asi-ml -f environment.yml --prune
+#
+# Wersje bazowe są dobrane pod ograniczenia AutoGluon 1.6.3, który instalujemy
+# dopiero w Sprincie 2 (requirements/preflight-s3.txt + constraints.txt).
+# Zestaw zostanie ostatecznie zamrożony po teście technicznym:
+#   python scripts/check_env.py --autogluon
+name: asi-ml
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pip=25.1.1
+  - numpy=2.2.6
+  - pandas=2.3.3
+  - scikit-learn=1.7.2
+  - scipy=1.16.0
+  - matplotlib=3.10.3
+  - pyyaml=6.0.2
+  - ipykernel=6.29.5
+  - nbformat=5.10.4
+  - nbclient=0.10.2
+  - pytest=8.3.5
+  - pre-commit=4.2.0

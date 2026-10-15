@@ -1,0 +1,5 @@
+# Pre-flight gotowości do Sprintu 2 (koniec Sprintu 1): instalacja Kedro i `kedro info`.
+# W Sprincie 1 nie pracujemy z Kedro.
+#   python -m pip install -r requirements/preflight-s2.txt -c constraints.txt
+#   kedro info
+kedro==1.7.0

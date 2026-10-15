@@ -1,0 +1,7 @@
+# Jednolite końce linii (LF) niezależnie od systemu operacyjnego.
+* text=auto eol=lf
+*.ipynb text eol=lf
+*.csv text eol=lf
+*.png binary
+*.jpg binary
+*.zip binary

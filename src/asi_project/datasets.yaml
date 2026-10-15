@@ -1,0 +1,142 @@
+# Rejestr zatwierdzonych datasetów — kontrakt prowadzącej. Zespół NIE edytuje tego pliku.
+# Opis dla ludzi: docs/datasets.md (spójność pilnuje tests/test_registry.py).
+#
+# Do X modelu mogą trafić wyłącznie kolumny z allowed_features.
+# Każda inna kolumna (w tym excluded_features i kolumny nieopisane) jest niedozwolona.
+# Wszystkie projekty to binary classification; positive_class jest kodowana jako 1.
+
+ai4i_2020:
+  title: AI4I 2020 Predictive Maintenance
+  source_url: https://archive.ics.uci.edu/dataset/601/ai4i+2020+predictive+maintenance+dataset
+  doi: https://doi.org/10.24432/C5HS5C
+  license: CC BY 4.0
+  download:
+    url: https://archive.ics.uci.edu/static/public/601/ai4i+2020+predictive+maintenance+dataset.zip
+    member: ai4i2020.csv
+  target: "Machine failure"
+  positive_class: "1"
+  prediction_moment: >
+    Predykcja dla pojedynczego punktu procesu na podstawie parametrów zmierzonych w tym punkcie,
+    zanim wiadomo, czy wystąpiła awaria i który tryb awarii zaszedł.
+  split: stratified_random
+  allowed_features:
+    - "Type"
+    - "Air temperature [K]"
+    - "Process temperature [K]"
+    - "Rotational speed [rpm]"
+    - "Torque [Nm]"
+    - "Tool wear [min]"
+  excluded_features:
+    "UDI": "identyfikator rekordu (nazwa kolumny w pliku CSV)"
+    "UID": "identyfikator rekordu (nazwa używana w metadanych UCI)"
+    "Product ID": "identyfikator produktu"
+    "TWF": "flaga trybu awarii (tool wear failure) — składowa targetu, target leakage"
+    "HDF": "flaga trybu awarii (heat dissipation failure) — składowa targetu, target leakage"
+    "PWF": "flaga trybu awarii (power failure) — składowa targetu, target leakage"
+    "OSF": "flaga trybu awarii (overstrain failure) — składowa targetu, target leakage"
+    "RNF": "flaga trybu awarii (random failure) — składowa targetu, target leakage"
+
+bank_marketing:
+  title: Bank Marketing (bank-full)
+  source_url: https://archive.ics.uci.edu/dataset/222/bank+marketing
+  doi: https://doi.org/10.24432/C5K306
+  license: CC BY 4.0
+  download:
+    url: https://archive.ics.uci.edu/static/public/222/bank+marketing.zip
+    member: bank-full.csv
+    read_csv:
+      sep: ";"
+  target: "y"
+  positive_class: "yes"
+  prediction_moment: >
+    Predykcja wykonywana jest przed poznaniem rezultatu bieżącego kontaktu telefonicznego.
+  split: time_ordered
+  allowed_features:
+    - "age"
+    - "job"
+    - "marital"
+    - "education"
+    - "default"
+    - "balance"
+    - "housing"
+    - "loan"
+    - "contact"
+    - "day"
+    - "month"
+    - "campaign"
+    - "pdays"
+    - "previous"
+    - "poutcome"
+  excluded_features:
+    "duration": >-
+      prediction-time availability / temporal leakage: czas trwania rozmowy jest znany
+      dopiero po jej zakończeniu, czyli po momencie predykcji
+
+iranian_churn:
+  title: Iranian Churn
+  source_url: https://archive.ics.uci.edu/dataset/563/iranian+churn+dataset
+  doi: https://doi.org/10.24432/C5JW3Z
+  license: CC BY 4.0
+  download:
+    url: https://archive.ics.uci.edu/static/public/563/iranian+churn+dataset.zip
+    member: "Customer Churn.csv"
+  target: "Churn"
+  positive_class: "1"
+  prediction_moment: >
+    Predykcja na koniec 9. miesiąca na podstawie agregatów z miesięcy 1–9; etykieta opisuje stan
+    klienta na koniec 12. miesiąca (3 miesiące odstępu planistycznego).
+  split: stratified_random
+  allowed_features:
+    - "Call Failure"
+    - "Complains"
+    - "Subscription Length"
+    - "Charge Amount"
+    - "Seconds of Use"
+    - "Frequency of use"
+    - "Frequency of SMS"
+    - "Distinct Called Numbers"
+    - "Age Group"
+    - "Tariff Plan"
+    - "Status"
+    - "Age"
+  excluded_features:
+    "Customer Value": >-
+      Excluded by course policy because availability at the intended prediction moment is
+      ambiguous (dokumentacja opisuje ją tylko jako wyliczoną wartość klienta, bez sposobu
+      i okresu wyliczenia)
+
+online_shoppers:
+  title: Online Shoppers Purchasing Intention
+  source_url: https://archive.ics.uci.edu/dataset/468/online+shoppers+purchasing+intention+dataset
+  doi: https://doi.org/10.24432/C5F88Q
+  license: CC BY 4.0
+  download:
+    url: https://archive.ics.uci.edu/static/public/468/online+shoppers+purchasing+intention+dataset.zip
+    member: online_shoppers_intention.csv
+  target: "Revenue"
+  positive_class: "true"
+  prediction_moment: >
+    Predykcja dla sesji na podstawie jej zagregowanych statystyk (liczby i czasy stron, metryki
+    analityczne, kontekst wizyty), zanim wiadomo, czy sesja zakończy się zakupem.
+  split: stratified_random
+  allowed_features:
+    - "Administrative"
+    - "Administrative_Duration"
+    - "Informational"
+    - "Informational_Duration"
+    - "ProductRelated"
+    - "ProductRelated_Duration"
+    - "BounceRates"
+    - "ExitRates"
+    - "SpecialDay"
+    - "Month"
+    - "OperatingSystems"
+    - "Browser"
+    - "Region"
+    - "TrafficType"
+    - "VisitorType"
+    - "Weekend"
+  excluded_features:
+    "PageValues": >-
+      Excluded by course policy because availability at the intended prediction moment is
+      ambiguous.
