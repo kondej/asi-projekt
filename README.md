@@ -23,7 +23,7 @@ powiązane, ale nie zawierają gotowych rozwiązań ani zadań do wykonania wcze
 | SHA-256 pliku danych (`fingerprint.json`) | `b3055ee355f59134d851d32641183cb4a8b45def7124d2f50442a042f358e0d9` |
 | Dane osobowe w zbiorze i sposób postępowania | Zbiór zanonimizowany. Brak danych osobowych (RODO nie dotyczy). |
 | Target i klasa pozytywna | Kolumna: `Revenue`. Klasa pozytywna: `true`. |
-| Metryka główna i uzasadnienie | **F1-score**. Zbiór jest niezbalansowany, co dyskwalifikuje Accuracy. F1 optymalizuje stosunek Precision do Recall. |
+| Metryka główna i uzasadnienie | F1-score dla klasy 1. Zbiór jest niezbalansowany (15,5% zakupów), więc Accuracy nie mówi nic o jakości modelu. F1 to średnia harmoniczna Precision i Recall. |
 | Użytkownik systemu i decyzja, którą wspiera model | **Użytkownik:** System e-commerce.<br>**Decyzja:** Czy wyświetlić pop-up z rabatem, aby zapobiec opuszczeniu sklepu bez zakupu. |
 <!-- KARTA-PROJEKTU:END -->
 
