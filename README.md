@@ -16,15 +16,15 @@ powiązane, ale nie zawierają gotowych rozwiązań ani zadań do wykonania wcze
 
 | Pole | Wartość |
 |---|---|
-| Zespół i integrator Sprintu 1 | TODO |
-| Dataset (id z `docs/datasets.md`) | TODO |
-| Źródło, licencja i cytowanie (DOI) | TODO |
-| Data pobrania danych | TODO |
-| SHA-256 pliku danych (`fingerprint.json`) | TODO |
-| Dane osobowe w zbiorze i sposób postępowania | TODO |
-| Target i klasa pozytywna | TODO |
-| Metryka główna i uzasadnienie | TODO |
-| Użytkownik systemu i decyzja, którą wspiera model | TODO |
+| Zespół i integrator Sprintu 1 | Piotr Kondej (Integrator), Denys Demydovskyi, Dominik Lewandowski |
+| Dataset (id z `docs/datasets.md`) | `online_shoppers` |
+| Źródło, licencja i cytowanie (DOI) | UCI Machine Learning Repository. Licencja: CC BY 4.0. DOI: https://doi.org/10.24432/C5F88Q |
+| Data pobrania danych | 20.10.2026 |
+| SHA-256 pliku danych (`fingerprint.json`) | `b3055ee355f59134d851d32641183cb4a8b45def7124d2f50442a042f358e0d9` |
+| Dane osobowe w zbiorze i sposób postępowania | Zbiór zanonimizowany. Brak danych osobowych (RODO nie dotyczy). |
+| Target i klasa pozytywna | Kolumna: `Revenue`. Klasa pozytywna: `true`. |
+| Metryka główna i uzasadnienie | F1-score dla klasy 1. Zbiór jest niezbalansowany (15,5% zakupów), więc Accuracy nie mówi nic o jakości modelu. F1 to średnia harmoniczna Precision i Recall. |
+| Użytkownik systemu i decyzja, którą wspiera model | **Użytkownik:** System e-commerce.<br>**Decyzja:** Czy wyświetlić pop-up z rabatem, aby zapobiec opuszczeniu sklepu bez zakupu. |
 <!-- KARTA-PROJEKTU:END -->
 
 ## Mapa projektu
