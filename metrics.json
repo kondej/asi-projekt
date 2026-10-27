@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "dataset": "online_shoppers",
+  "target": "Revenue",
+  "positive_class": "true",
+  "data_mode": "full",
+  "split": {
+    "strategy": "stratified_random",
+    "test_size": 0.2,
+    "random_state": 42,
+    "n_train": 9864,
+    "n_test": 2466
+  },
+  "features": [
+    "Administrative",
+    "Administrative_Duration",
+    "Informational",
+    "Informational_Duration",
+    "ProductRelated",
+    "ProductRelated_Duration",
+    "BounceRates",
+    "ExitRates",
+    "SpecialDay",
+    "Month",
+    "OperatingSystems",
+    "Browser",
+    "Region",
+    "TrafficType",
+    "VisitorType",
+    "Weekend"
+  ],
+  "models": {
+    "dummy": {
+      "accuracy": 0.8450932684509327,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "confusion_matrix": {
+        "tn": 2084,
+        "fp": 0,
+        "fn": 382,
+        "tp": 0
+      }
+    },
+    "logistic_regression": {
+      "accuracy": 0.8446877534468775,
+      "precision": 0.48148148148148145,
+      "recall": 0.034031413612565446,
+      "f1": 0.06356968215158924,
+      "confusion_matrix": {
+        "tn": 2070,
+        "fp": 14,
+        "fn": 369,
+        "tp": 13
+      }
+    }
+  }
+}
