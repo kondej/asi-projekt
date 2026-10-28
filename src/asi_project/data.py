@@ -191,6 +191,10 @@ def normalize_input(df: pd.DataFrame) -> pd.DataFrame:
     for column in normalized.columns:
         if is_text_column(normalized[column]):
             normalized[column] = normalized[column].map(_strip_text)
+
+    if "Month" in normalized.columns:
+        normalized["Month"] = normalized["Month"].replace({"June": "Jun"})
+
     return normalized
 
 
@@ -204,7 +208,9 @@ def filter_training_rows(df: pd.DataFrame, contract: DatasetContract) -> pd.Data
     Decyzję i jej powód zapisz w notebooku 01.
     """
     keep = df[contract.target].map(label_text).notna()
-    return df.loc[keep].copy()
+    filtered = df.loc[keep].copy()
+
+    return filtered.drop_duplicates()
 
 
 # --- X / y i split -----------------------------------------------------------------------------
