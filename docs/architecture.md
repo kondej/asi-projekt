@@ -48,11 +48,57 @@ gotowy — sprawdza to `python scripts/check_dod.py`.
 <!-- DIAGRAM-V0:START -->
 ```mermaid
 flowchart LR
-    data["TODO: źródło danych"] --> model["TODO: kolejne elementy systemu"]
+    subgraph DANE["Dane i kontrakt"]
+        uci[("UCI: Online Shoppers<br/>CC BY 4.0")]
+        dl["scripts/download_data.py"]
+        raw[("data/01_raw/online_shoppers<br/>+ fingerprint.json")]
+        contract["Kontrakt danych<br/>datasets.yaml + project.yaml<br/>target, ALLOWED / EXCLUDED"]
+        uci --> dl --> raw
+    end
+
+    subgraph TRENING["Trening"]
+        norm1["Input normalization<br/>normalize_input()"]
+        filt["Training-only filtering<br/>filter_training_rows()<br/>braki targetu, duplikaty"]
+        split["Split stratyfikowany<br/>train / test"]
+        pipe["sklearn Pipeline<br/>model preprocessing<br/>imputer, scaler, one-hot<br/>+ LogisticRegression"]
+        metrics[("metrics.json<br/>F1 vs Dummy")]
+        norm1 --> filt --> split --> pipe --> metrics
+    end
+
+    subgraph ARTEFAKT["Artefakt modelu"]
+        kedro["Pipeline Kedro<br/>S2"]
+        pkg[("Pakiet modelu<br/>model + metadata.json<br/>S3")]
+    end
+
+    subgraph USLUGA["Predykcja"]
+        client["System e-commerce / UI Streamlit<br/>S5"]
+        api["API z tokenem<br/>S4"]
+        norm2["Input normalization<br/>normalize_input()"]
+        pred["Pipeline: model preprocessing<br/>+ predykcja"]
+        db[("Postgres<br/>zapis predykcji<br/>S4-S5")]
+    end
+
+    cloud["Cloud Run + Secret Manager + logi<br/>S6"]
+
+    raw --> norm1
+    contract -.-> norm1
+    contract -.-> pipe
+    pipe -.-> kedro --> pkg
+    pkg -->|ładowanie modelu| pred
+    client -->|"sesja: cechy ALLOWED"| api
+    api --> norm2 --> pred
+    pred -->|"prawdopodobieństwo zakupu<br/>+ decyzja: pokaż rabat?"| api
+    api -->|odpowiedź| client
+    api --> db
+    USLUGA -.-> cloud
+
+    classDef done fill:#d4edda,stroke:#28a745,color:#000
+    classDef planned fill:#f0f0f0,stroke:#999,stroke-dasharray:5 5,color:#555
+    class uci,dl,raw,contract,norm1,filt,split,pipe,metrics done
+    class kedro,pkg,client,api,norm2,pred,db,cloud planned
 ```
 
-TODO: krótki opis diagramu (3–5 zdań).
-<!-- DIAGRAM-V0:END -->
+Dane pobieramy z UCI, a kontrakt danych określa target i dozwolone cechy. Normalizacja wejścia działa w treningu i przy predykcji, filtrowanie rekordów tylko w treningu, a preprocessing modelu jest częścią Pipeline. Model trafia do API, które dostaje dane sesji ze sklepu i odpowiada, czy pokazać rabat, a predykcje zapisuje w bazie. Zielone elementy już istnieją, szare są planowane w kolejnych sprintach.
 
 ## Historia zmian architektury
 
