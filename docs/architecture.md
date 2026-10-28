@@ -27,24 +27,6 @@ Relacje między warstwami (opis tekstowy, nie diagram):
 
 ## Diagram v0 (Sprint 1)
 
-Narysujcie, jak — według waszej obecnej wiedzy — będzie wyglądał system na koniec projektu.
-Diagram v0 nie musi być poprawny w szczegółach; ma pokazać wasze rozumienie przepływu.
-Sama lista warstw z sekcji wyżej nie wystarcza — diagram pokazuje wasz system i wasze decyzje.
-
-Na diagramie zaznaczcie co najmniej:
-
-- skąd pochodzą dane i gdzie żyje kontrakt danych;
-- gdzie działa każdy z trzech typów przetwarzania: input normalization, training-only
-  filtering, model preprocessing;
-- gdzie powstaje model i jak trafia tam, gdzie wykonuje się predykcja;
-- kto lub co wysyła żądanie predykcji i co dostaje w odpowiedzi;
-- gdzie przechowywany jest stan (np. zapis predykcji);
-- które elementy już istnieją po Sprincie 1, a które są planowane.
-
-Diagram umieśćcie w bloku `mermaid` w sekcji poniżej (GitHub renderuje Mermaid w Markdown)
-albo jako obraz w `docs/` z linkiem w tej sekcji. Usuńcie znaczniki TODO, gdy diagram będzie
-gotowy — sprawdza to `python scripts/check_dod.py`.
-
 <!-- DIAGRAM-V0:START -->
 ```mermaid
 flowchart LR
@@ -96,6 +78,7 @@ flowchart LR
 ```
 
 Dane pobieramy z UCI, a kontrakt danych określa target i dozwolone cechy. Normalizacja wejścia działa w treningu i przy predykcji, filtrowanie rekordów tylko w treningu, a preprocessing modelu jest częścią Pipeline. Model trafia do API, które dostaje dane sesji ze sklepu i odpowiada, czy pokazać rabat, a predykcje zapisuje w bazie. Zielone elementy już istnieją, szare są planowane w kolejnych sprintach.
+<!-- DIAGRAM-V0:END -->
 
 ## Historia zmian architektury
 
