@@ -67,18 +67,16 @@ flowchart LR
 
     subgraph ARTEFAKT["Artefakt modelu"]
         kedro["Pipeline Kedro<br/>S2"]
-        pkg[("Pakiet modelu<br/>model + metadata.json<br/>S3")]
+        pkg[("Magazyn modeli: data/06_models/<br/>model + metadata.json<br/>S3")]
     end
 
-    subgraph USLUGA["Predykcja"]
+    subgraph USLUGA["Środowisko wdrożeniowe: Google Cloud Run + Secret Manager + logi (S6)"]
         client["System e-commerce / UI Streamlit<br/>S5"]
         api["API z tokenem<br/>S4"]
         norm2["Input normalization<br/>normalize_input()"]
         pred["Pipeline: model preprocessing<br/>+ predykcja"]
         db[("Postgres<br/>zapis predykcji<br/>S4-S5")]
     end
-
-    cloud["Cloud Run + Secret Manager + logi<br/>S6"]
 
     raw --> norm1
     contract -.-> norm1
@@ -90,12 +88,11 @@ flowchart LR
     pred -->|"prawdopodobieństwo zakupu<br/>+ decyzja: pokaż rabat?"| api
     api -->|odpowiedź| client
     api --> db
-    USLUGA -.-> cloud
 
     classDef done fill:#d4edda,stroke:#28a745,color:#000
     classDef planned fill:#f0f0f0,stroke:#999,stroke-dasharray:5 5,color:#555
     class uci,dl,raw,contract,norm1,filt,split,pipe,metrics done
-    class kedro,pkg,client,api,norm2,pred,db,cloud planned
+    class kedro,pkg,client,api,norm2,pred,db planned
 ```
 
 Dane pobieramy z UCI, a kontrakt danych określa target i dozwolone cechy. Normalizacja wejścia działa w treningu i przy predykcji, filtrowanie rekordów tylko w treningu, a preprocessing modelu jest częścią Pipeline. Model trafia do API, które dostaje dane sesji ze sklepu i odpowiada, czy pokazać rabat, a predykcje zapisuje w bazie. Zielone elementy już istnieją, szare są planowane w kolejnych sprintach.
