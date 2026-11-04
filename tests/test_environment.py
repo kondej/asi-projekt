@@ -44,7 +44,7 @@ def test_constraints_match_environment(repo_root):
 def test_preflight_requirements_are_pinned(repo_root):
     s2 = _requirements(repo_root / "requirements" / "preflight-s2.txt")
     s3 = _requirements(repo_root / "requirements" / "preflight-s3.txt")
-    assert set(s2) == {"kedro"}
+    assert set(s2) == {"kedro", "kedro-datasets"}
     assert set(s3) == {"wandb", "autogluon.tabular"}
     assert "latest" not in (repo_root / "requirements" / "preflight-s3.txt").read_text()
 

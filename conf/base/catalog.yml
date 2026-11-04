@@ -1,0 +1,5 @@
+# Sprint 2 — szablon katalogu danych Kedro.
+# TODO (zespół): zdefiniuj wejścia/wyjścia w formacie Kedro Data Catalog,
+# np. raw_data, dane po przetworzeniu, model i metryki.
+# Użyj nazw klas zakończonych na Dataset, zgodnie z wersją Kedro.
+{}
