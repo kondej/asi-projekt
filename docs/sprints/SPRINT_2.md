@@ -199,7 +199,7 @@ Na początku sprintu upewnijcie się, że pre-flight ze Sprintu 1 działa:
 kedro info
 ```
 
-Jeśli Kedro nie jest zainstalowane:
+Jeśli Kedro lub `kedro-datasets` nie są zainstalowane:
 
 ```bash
 python -m pip install -r requirements/preflight-s2.txt -c constraints.txt
@@ -207,7 +207,7 @@ python -m pip install -r requirements/preflight-s2.txt -c constraints.txt
 
 ---
 
-### Krok 2. Uruchomcie przygotowany scaffold
+### Krok 2. Zainicjalizujcie Kedro w istniejącym repozytorium
 
 W repozytorium od początku znajdują się katalogi przygotowane pod Sprint 2.
 
@@ -220,9 +220,27 @@ tests/pipelines/
 docs/adr/
 ```
 
-Nie twórzcie równoległej struktury obok scaffoldingu.
+Aktualizacja referencyjna na start Sprintu 2 dodaje:
 
-Rozwijajcie istniejące katalogi.
+- `[tool.kedro]` do istniejącego `pyproject.toml`;
+- `settings.py` i `pipeline_registry.py` do `src/asi_project/`;
+- puste szablony `conf/base/catalog.yml` oraz `conf/base/parameters.yml`.
+
+Jeśli repozytorium powstało przed tą aktualizacją, trzeba ją przenieść do
+repozytorium zespołu. Pliki z aktualizacji **nie są rozwiązaniem** Sprintu 2.
+
+Po aktualizacji wykonajcie:
+
+```bash
+python -m pip install --no-deps -e .
+kedro registry list
+```
+
+Polecenie powinno rozpoznać projekt, ale bez przygotowanych nodów
+`kedro run` nie ma jeszcze czego wykonywać. To normalny etap pracy.
+
+Nie uruchamiajcie `kedro new` w istniejącym repozytorium. Rozwijajcie
+otrzymaną strukturę i implementujcie samodzielnie nody oraz pipeline'y.
 
 ---
 

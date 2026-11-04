@@ -1,0 +1,4 @@
+# Sprint 2 — parametry pipeline'u.
+# TODO (zespół): dodaj test_size, random_state i inne parametry zgodne
+# z project.yaml oraz kontraktem wybranego datasetu.
+{}
