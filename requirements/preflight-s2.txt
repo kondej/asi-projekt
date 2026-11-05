@@ -1,5 +1,5 @@
-# Pre-flight gotowości do Sprintu 2 (koniec Sprintu 1): instalacja Kedro i `kedro info`.
-# W Sprincie 1 nie pracujemy z Kedro.
+# Sprint 2: Kedro 1.7.0 + komponenty Data Catalog wykorzystywane w kursie.
 #   python -m pip install -r requirements/preflight-s2.txt -c constraints.txt
-#   kedro info
+#   kedro registry list
 kedro==1.7.0
+kedro-datasets[pandas-csvdataset,json-jsondataset,pickle-pickledataset]==8.1.0

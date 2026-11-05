@@ -17,6 +17,15 @@ where = ["src"]
 [tool.setuptools.package-data]
 asi_project = ["datasets.yaml"]
 
+[tool.kedro]
+# Projekt Kedro działający wewnątrz istniejącego pakietu asi_project.
+package_name = "asi_project"
+project_name = "ASI Team Project"
+kedro_init_version = "1.7.0"
+source_dir = "src"
+tools = ""
+example_pipeline = "False"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
@@ -32,3 +41,6 @@ select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["asi_project"]
+
+[tool.kedro_telemetry]
+project_id = "63cec216223e400bae9044c2c4936219"
