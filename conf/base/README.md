@@ -1,7 +1,5 @@
 # conf/base
 
-> Scaffold for Sprint 2 — do not implement before this sprint.
-
 Wspólna konfiguracja Kedro:
 
 - Sprint 2: katalog danych (surowe dane → dane po przetworzeniu → model i metryki) oraz

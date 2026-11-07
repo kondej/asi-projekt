@@ -1,7 +1,5 @@
 # pipelines/ — pipeline'y Kedro
 
-> Scaffold for Sprint 2 — do not implement before this sprint.
-
 | Pipeline | Sprint | Wejście → wyjście |
 |---|---|---|
 | `data_processing/` | S2 | surowe dane → dane po input normalization i training-only filtering |
