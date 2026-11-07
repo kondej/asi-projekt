@@ -30,6 +30,9 @@ jobs:
           environment-file: environment.yml
           cache-environment: true
 
+      - name: Instalacja zależności Sprint 2
+        run: python -m pip install -r requirements/preflight-s2.txt -c constraints.txt    
+
       - name: Instalacja pakietu projektu
         run: python -m pip install --no-deps -e .
 
