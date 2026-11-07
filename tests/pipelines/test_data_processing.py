@@ -65,9 +65,7 @@ def test_filter_training_data_removes_missing_target_and_duplicates(
     assert len(filtered) == len(df.drop_duplicates())
 
 
-def test_full_data_processing_on_ci_sample(
-    sample_df: pd.DataFrame, parameters: dict
-) -> None:
+def test_full_data_processing_on_ci_sample(sample_df: pd.DataFrame, parameters: dict) -> None:
     validated = validate_raw_data(sample_df, parameters)
     normalized = normalize_input_data(validated)
     training = filter_training_data(normalized, parameters)
