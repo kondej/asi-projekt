@@ -1,7 +1,5 @@
 # pipelines/data_processing
 
-> Scaffold for Sprint 2 — do not implement before this sprint.
-
 Pliki, które powstaną w Sprincie 2: definicje nodów i definicja pipeline'u.
 
 Kontrakt:
