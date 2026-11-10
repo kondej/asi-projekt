@@ -182,3 +182,51 @@ z tych elementów.
 Ogólną architekturę warstw opisuje [`docs/architecture.md`](docs/architecture.md).
 Przypięte instalacje kolejnych sprintów: `requirements/preflight-s2.txt` (Kedro, pod koniec S1)
 i `requirements/preflight-s3.txt` (W&B i AutoGluon, pod koniec S2).
+
+## Kedro quickstart
+
+Przygotowanie danych, trening modelu i ewaluację uruchamia się przez pipeline Kedro.
+
+### 1. Środowisko
+
+Aktywuj środowisko `asi-ml` i zainstaluj zależności Kedro oraz pakiet projektu:
+
+```bash
+conda activate asi-ml
+python -m pip install -r requirements/preflight-s2.txt -c constraints.txt
+python -m pip install --no-deps -e .
+```
+
+### 2. Pobranie danych
+
+Pobierz pełny zbiór `online_shoppers` do katalogu `data/01_raw/`:
+
+```bash
+python scripts/download_data.py
+```
+
+### 3. Uruchomienie pipeline'u
+
+Trening i ewaluacja na pełnym zbiorze danych:
+
+```bash
+kedro run
+```
+
+Uruchomienie na próbce testowej `data/01_raw/sample.csv` bez pobierania pełnych danych:
+
+```bash
+kedro run --env ci
+```
+
+Uruchomienie samego przygotowania danych:
+
+```bash
+kedro run --pipeline data_processing --env ci
+```
+
+### 4. Wyniki
+
+Po zakończeniu `kedro run` zapisywane są:
+- wytrenowany model w `data/06_models/`
+- metryki ewaluacyjne w `data/08_reporting/`
