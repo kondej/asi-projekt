@@ -16,8 +16,6 @@ logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro 
 
 ## Future scaffold (Sprinty 2–4)
 
-> Scaffold for Sprints 2–4 — do not implement before these sprints.
-
 | Element | Sprint | Kontrakt |
 |---|---|---|
 | `pipelines/data_processing/` | S2 | nody: walidacja → input normalization → training-only filtering (funkcje z `data.py`) |
