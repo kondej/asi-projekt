@@ -103,6 +103,6 @@ def test_sprint1_code_does_not_import_future_dependencies(repo_root):
 
 def test_dod_report_has_placeholders_for_future_sprints(repo_root):
     module = _load_script(repo_root, "check_dod")
-    for sprint in range(2, 7):
+    for sprint in (s for s in range(2, 7) if s not in module.SPRINT_CHECKS):
         assert module.main(["--sprint", str(sprint)]) == 0
         assert module.main(["--sprint", str(sprint), "--strict"]) == 2
