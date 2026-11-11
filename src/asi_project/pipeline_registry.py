@@ -11,4 +11,9 @@ from kedro.pipeline import Pipeline
 
 def register_pipelines() -> dict[str, Pipeline]:
     """Wykryj pipeline'y z ``src/asi_project/pipelines/``."""
-    return find_pipelines()
+    pipelines = find_pipelines()
+    pipelines["__default__"] = sum(
+        (pipeline for name, pipeline in pipelines.items() if name != "__default__"),
+        Pipeline([]),
+    )
+    return pipelines
