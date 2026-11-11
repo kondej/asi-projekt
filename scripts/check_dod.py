@@ -4,7 +4,7 @@ Użycie:
     python scripts/check_dod.py --sprint 1            # raport, kod 0 (informacyjnie w CI)
     python scripts/check_dod.py --sprint 1 --strict   # kod 1, jeśli DoD nie jest spełnione
 
-Automatyczne punkty ma obecnie Sprint 1. Punkty kolejnych sprintów są dopisywane do
+Automatyczne punkty mają obecnie Sprinty 1 i 2. Punkty kolejnych sprintów są dopisywane do
 SPRINT_CHECKS na starcie danego sprintu; do tego czasu raport kieruje do
 docs/sprints/SPRINT_N.md, a --strict kończy się kodem 2 (brak automatycznych punktów).
 
@@ -18,7 +18,10 @@ import json
 import os
 import sys
 from collections.abc import Callable
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+
+import yaml
 
 from asi_project.config import ConfigError, get_contract, load_project_config
 from asi_project.data import (
@@ -43,6 +46,18 @@ MANUAL_ITEMS_S1 = (
     "LogisticRegression porównana z Dummy na metryce głównej (odpowiedzi w notebooku 02).",
     "Pre-flight S2: `kedro info` działa u każdej osoby w zespole.",
 )
+
+MANUAL_ITEMS_S2 = (
+    "Każda osoba ma własny obszar pracy i zrobiła merytoryczne review PR innej osoby.",
+    "Smoke: świeży klon -> środowisko -> dane -> `kedro run` -> model i metryki.",
+    "Metryki z `kedro run` (pełne dane) zgodne z baseline'em ze Sprintu 1.",
+    "Pipeline używa logiki z data.py; model preprocessing nadal w sklearn Pipeline.",
+    "ADR-1 zmergowany; CI na main zielone.",
+    "Pre-flight S3: `wandb login` i `python scripts/check_env.py --autogluon` u każdej osoby.",
+)
+
+S2_CATALOG = ("raw_data", "training_data", "model", "dummy_model", "metrics")
+S2_PIPELINES = ("data_processing", "data_science")
 
 
 def section_filled(path: Path, markers: tuple[str, str]) -> tuple[bool, str]:
@@ -117,10 +132,92 @@ def sprint1_checks() -> list[Check]:
     return checks
 
 
+def read_yaml(path: Path) -> dict:
+    if not path.is_file():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def pinned_version(root: Path, package: str) -> str | None:
+    requirements = root / "requirements" / "preflight-s2.txt"
+    for line in requirements.read_text(encoding="utf-8").splitlines():
+        name, sep, pinned = line.split("#")[0].strip().partition("==")
+        if sep and name.split("[")[0] == package:
+            return pinned
+    return None
+
+
+def sprint2_checks() -> list[Check]:
+    config = load_project_config()
+    root = config.root
+    checks: list[Check] = []
+
+    for package in ("kedro", "kedro-datasets"):
+        pinned = pinned_version(root, package)
+        try:
+            installed = version(package)
+        except PackageNotFoundError:
+            installed = None
+        detail = f"{installed} (wymagane {pinned})"
+        checks.append((f"{package} w przypiętej wersji", installed == pinned, detail))
+
+    for name in S2_PIPELINES:
+        path = root / "src" / "asi_project" / "pipelines" / name / "pipeline.py"
+        ok = path.is_file() and "def create_pipeline" in path.read_text(encoding="utf-8")
+        detail = "create_pipeline()" if ok else f"brak create_pipeline() w {name}/pipeline.py"
+        checks.append((f"Pipeline {name}", ok, detail))
+
+    catalog = read_yaml(root / "conf" / "base" / "catalog.yml")
+    missing = [name for name in S2_CATALOG if name not in catalog]
+    detail = f"brak: {', '.join(missing)}" if missing else "OK"
+    checks.append(("Data Catalog w conf/base", not missing, detail))
+
+    split = read_yaml(root / "conf" / "base" / "parameters.yml").get("split", {})
+    ok = {"test_size", "random_state"} <= set(split)
+    detail = "OK" if ok else "brak split.test_size / split.random_state"
+    checks.append(("Parametry w conf/base/parameters.yml", ok, detail))
+
+    ci_raw = read_yaml(root / "conf" / "ci" / "catalog.yml").get("raw_data", {})
+    ci_mode = read_yaml(root / "conf" / "ci" / "parameters.yml").get("data_mode")
+    ci_path = ci_raw.get("filepath")
+    ok = bool(ci_path) and (root / ci_path).resolve() == config.ci_sample_path.resolve()
+    ok = ok and ci_mode == "sample"
+    checks.append(("conf/ci na próbce CI", ok, f"{ci_path}, data_mode={ci_mode}"))
+
+    node_tests = sorted((root / "tests" / "pipelines").glob("test_*.py"))
+    detail = ", ".join(p.name for p in node_tests) or "brak tests/pipelines/test_*.py"
+    checks.append(("Testy nodów", bool(node_tests), detail))
+
+    adrs = [
+        p.name
+        for p in sorted((root / "docs" / "adr").glob("*.md"))
+        if p.name.lower() != "readme.md" and "template" not in p.name.lower()
+    ]
+    checks.append(("ADR-1 w docs/adr/", bool(adrs), ", ".join(adrs) or "brak ADR"))
+
+    readme = (root / "README.md").read_text(encoding="utf-8").lower()
+    ok = "kedro quickstart" in readme
+    checks.append(("Kedro quickstart w README", ok, "OK" if ok else "brak sekcji"))
+
+    kedro_metrics = root / "data" / "08_reporting" / "metrics.json"
+    if kedro_metrics.is_file():
+        contract = get_contract(config)
+        record = load_metrics(kedro_metrics)
+        problems = validate_metrics_record(record, contract)
+        detail = "; ".join(problems) or f"OK (data_mode={record.get('data_mode')})"
+        checks.append(("Metryki z kedro run", not problems, detail))
+    else:
+        checks.append(("Metryki z kedro run", False, "brak — uruchom `kedro run`"))
+
+    checks.append(("Notebooki bez outputów", *notebooks_clean(root)))
+    return checks
+
+
 # Rejestr automatycznych punktów DoD: numer sprintu -> (funkcja zbierająca punkty, lista ręczna).
 # Sprinty 2–6: punkty dopisywane na starcie danego sprintu (checks added when Sprint N starts).
 SPRINT_CHECKS: dict[int, tuple[Callable[[], list[Check]], tuple[str, ...]]] = {
     1: (sprint1_checks, MANUAL_ITEMS_S1),
+    2: (sprint2_checks, MANUAL_ITEMS_S2),
 }
 
 
