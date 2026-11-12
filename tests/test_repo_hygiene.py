@@ -7,6 +7,7 @@ import shutil
 import subprocess
 
 import pytest
+import yaml
 
 FUTURE_PACKAGES = {
     "autogluon",
@@ -101,8 +102,25 @@ def test_sprint1_code_does_not_import_future_dependencies(repo_root):
             assert not roots & FUTURE_PACKAGES, f"{path.name}: import {roots & FUTURE_PACKAGES}"
 
 
-def test_dod_report_has_placeholders_for_future_sprints(repo_root):
+def test_dod_non_s1_reports_are_informational(repo_root, capsys):
     module = _load_script(repo_root, "check_dod")
     for sprint in (s for s in range(2, 7) if s not in module.SPRINT_CHECKS):
         assert module.main(["--sprint", str(sprint)]) == 0
+        output = capsys.readouterr().out
+        assert "automatyczny raport DoD nie jest dostępny" in output
+        assert f"docs/sprints/SPRINT_{sprint}.md" in output
         assert module.main(["--sprint", str(sprint), "--strict"]) == 2
+        capsys.readouterr()
+
+
+def test_ci_installs_sprint_dependencies_before_pytest(repo_root):
+    workflow = yaml.safe_load((repo_root / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["checks"]["steps"]
+    command_steps = [step.get("run", "") for step in steps]
+    commands = "\n".join(command_steps)
+    assert "requirements/preflight-s2.txt" in commands
+    assert "requirements/preflight-s3.txt" in commands
+    assert "kedro registry list" in commands
+    assert commands.index("requirements/preflight-s2.txt") < commands.index("pytest")
+    assert commands.index("requirements/preflight-s3.txt") < commands.index("pytest")
+    assert workflow["env"]["WANDB_MODE"] == "disabled"

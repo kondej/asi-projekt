@@ -4,9 +4,10 @@ Użycie:
     python scripts/check_dod.py --sprint 1            # raport, kod 0 (informacyjnie w CI)
     python scripts/check_dod.py --sprint 1 --strict   # kod 1, jeśli DoD nie jest spełnione
 
-Automatyczne punkty mają obecnie Sprinty 1 i 2. Punkty kolejnych sprintów są dopisywane do
-SPRINT_CHECKS na starcie danego sprintu; do tego czasu raport kieruje do
-docs/sprints/SPRINT_N.md, a --strict kończy się kodem 2 (brak automatycznych punktów).
+Automatyczne punkty zdefiniowano tylko dla Sprintu 1. Dla Sprintów 2–6
+skrypt informuje o braku automatycznego raportu i kieruje do wymagań w
+docs/sprints/SPRINT_N.md. Nie jest to błąd projektu studenta.
+Tryb --strict zwraca wtedy kod 2 (brak automatycznego walidatora).
 
 W GitHub Actions raport trafia też do podsumowania joba (GITHUB_STEP_SUMMARY).
 Punkty wymagające oceny człowieka (review, ownership, smoke na świeżym klonie) są wypisane
@@ -214,7 +215,7 @@ def sprint2_checks() -> list[Check]:
 
 
 # Rejestr automatycznych punktów DoD: numer sprintu -> (funkcja zbierająca punkty, lista ręczna).
-# Sprinty 2–6: punkty dopisywane na starcie danego sprintu (checks added when Sprint N starts).
+# Sprinty 2–6: brak automatycznego walidatora; wymagania są w docs/sprints/.
 SPRINT_CHECKS: dict[int, tuple[Callable[[], list[Check]], tuple[str, ...]]] = {
     1: (sprint1_checks, MANUAL_ITEMS_S1),
     2: (sprint2_checks, MANUAL_ITEMS_S2),
@@ -242,9 +243,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.sprint not in SPRINT_CHECKS:
-        print(f"Sprint {args.sprint}: automatyczne punkty DoD zostaną dodane na starcie sprintu")
-        print(f"(checks added when Sprint {args.sprint} starts).")
-        print(f"Pełna Definition of Done: docs/sprints/SPRINT_{args.sprint}.md")
+        print(f"Sprint {args.sprint}: automatyczny raport DoD nie jest dostępny.")
+        print("To informacja, nie błąd projektu; skrypt nie ocenia tego sprintu.")
+        print(f"Wymagania i Definition of Done: docs/sprints/SPRINT_{args.sprint}.md")
+        print("Sprawdź: pytest, pre-commit i wymagane demo/smoke z dokumentacji sprintu.")
         return 2 if args.strict else 0
 
     collect, manual_items = SPRINT_CHECKS[args.sprint]
