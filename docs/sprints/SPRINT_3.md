@@ -406,11 +406,22 @@ pre-commit run --all-files
 
 CI powinno działać bez wykonywania pełnych eksperymentów online.
 
+W referencyjnym workflow GitHub Actions instalowane są zależności z
+`requirements/preflight-s2.txt` i `requirements/preflight-s3.txt`. Sama obecność
+biblioteki AutoGluon w środowisku **nie oznacza**, że CI ma trenować modele.
+
 W CI:
 
-- W&B działa w trybie `WANDB_MODE=disabled`;
-- AutoGluon jest wyłączony parametrem albo uruchamiany z bardzo krótkim limitem;
-- testowana jest możliwość zapisu i ponownego wczytania pakietu modelu.
+- W&B działa w trybie `WANDB_MODE=disabled` (bez logowania i dostępu do konta);
+- testy nie wykonują pełnego treningu AutoGluona; importy mogą działać,
+  ale trening należy wyłączyć lub zastąpić małym modelem testowym / mockiem;
+- testowana jest możliwość lokalnego zapisu, ponownego wczytania pakietu modelu
+  i predykcji bez wywoływania W&B.
+
+**Osobno, poza CI**, należy wykonać obowiązkowy smoke z prawdziwym artefaktem
+`production`: pobranie z W&B → odczyt w czystym procesie → predykcja 5 wierszy
+→ kontrola schematu. Wymaga to poświadczeń i dostępu do artefaktu, więc
+nie powinno być zależnością zielonego CI na Pull Requestach.
 
 ---
 

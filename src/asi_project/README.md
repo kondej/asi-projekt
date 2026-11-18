@@ -3,7 +3,7 @@
 Wspólny kod projektu. Jeden pakiet gwarantuje, że trening i serwowanie korzystają z tej samej
 logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro i w API).
 
-## Aktywne w Sprincie 1
+## Moduły podstawowe (od Sprintu 1)
 
 | Moduł | Rola |
 |---|---|
@@ -14,7 +14,9 @@ logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro 
 | `metrics.py` | metryki i kontrakt `metrics.json` |
 | `download.py` | pobieranie danych i odcisk SHA-256 |
 
-## Future scaffold (Sprinty 2–4)
+## Rozszerzenia w Sprintach 2–4
+
+> Implementacje poszczególnych sprintów przygotowują zespoły. Scaffold nie zawiera rozwiązań.
 
 | Element | Sprint | Kontrakt |
 |---|---|---|
@@ -26,3 +28,27 @@ logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro 
 
 Zasada: moduły aktywne w Sprincie 1 nie importują Kedro, W&B, AutoGluona, FastAPI ani innych
 bibliotek przyszłych sprintów. Pilnuje tego test w `tests/test_repo_hygiene.py`.
+
+## Kontrakt pakietu modelu (Sprint 3)
+
+Zespół implementuje `model_package.py` z jedną, wspólną ścieżką zapisu i odczytu
+modelu, wykorzystywaną później również w API. Nie ma gotowego kodu w scaffoldzie.
+
+Pakiet jest katalogiem z zapisanym modelem (plik lub katalog, zależnie od biblioteki)
+i `metadata.json`. Metadane muszą obejmować **już wymagane** informacje:
+listę cech wejściowych (ALLOWED FEATURES), target, klasę pozytywną, metryki,
+Git SHA, fingerprint danych i wersje bibliotek. Dokładne nazwy kluczy JSON
+ustala zespół i dokumentuje w testach; nie są osobnym kryterium oceniania.
+
+Dwa niezależne sprawdzenia:
+
+1. **W CI:** szybki test lokalnego zapisu → odczytu → predykcji, bez dostępu
+   do W&B, bez pobierania pełnych danych i bez pełnego treningu AutoGluona.
+   Można zastosować mały model testowy i mocki; test ma używać tych samych
+   funkcji pakowania, których użyje kod produkcyjny.
+2. **Smoke poza CI:** w świeżym procesie pobranie W&B Artifact z aliasem
+   `production` → wczytanie modelu → predykcja 5 wierszy → kontrola schematu.
+   Ten test wymaga dostępu do właściwego artefaktu i odpowiednich uprawnień.
+
+Są to dwa sposoby weryfikacji **istniejących wymagań Sprintu 3**, a nie nowe
+zadania. Żaden z nich nie powinien uruchamiać treningu tylko po to, by użyć modelu.

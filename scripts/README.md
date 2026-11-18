@@ -1,20 +1,20 @@
 # scripts/
 
-## Aktywne w Sprincie 1
+## Skrypty bazowe (od Sprintu 1)
 
 | Skrypt | Rola |
 |---|---|
 | `download_data.py` | pobranie pełnych danych wybranego datasetu i odcisk SHA-256 |
 | `make_ci_sample.py` | próbka CI `data/01_raw/sample.csv` |
 | `check_env.py` | kontrola środowiska; `--autogluon` to pre-flight gotowości do Sprintu 3 |
-| `check_dod.py` | raport Definition of Done (`--sprint 1`; kolejne sprinty dopiszą swoje punkty) |
+| `check_dod.py` | automatyczny raport tylko dla Sprintu 1; w S2–S6 wskazuje dokumentację i nie ocenia projektu |
 | `check_metrics.py`, `project_status.py`, `run_notebook.py` | kroki CI |
 | `build_issues.py` | generowanie `github_issues/` z `docs/sprints/` |
 | `smoke_datasets.py` | narzędzie prowadzącej: smoke prawdziwych źródeł wszystkich datasetów |
 
-## Future scaffold (Sprinty 3–6)
+## Kolejne etapy (Sprinty 3–6)
 
-> Scaffold for Sprints 3–6 — do not implement before these sprints.
+> Opis kontraktów. Implementacje przygotowują zespoły w odpowiednim sprincie.
 
 | Skrypt | Sprint | Kontrakt |
 |---|---|---|
