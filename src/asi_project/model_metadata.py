@@ -5,13 +5,17 @@ import json
 import os
 import platform
 import subprocess
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from asi_project.config import DatasetContract, ProjectConfig
-from asi_project.data import raw_data_path
+from asi_project.data import feature_list_problems, raw_data_path
 from asi_project.download import sha256_hex
-from asi_project.metrics import DATA_MODES
+from asi_project.metrics import DATA_MODES, METRIC_NAMES
 
+METADATA_SCHEMA_VERSION = 1
 UNKNOWN = "unknown"
 REQUIRED_LIBRARIES = ("scikit-learn", "pandas", "numpy", "joblib")
 OPTIONAL_LIBRARIES = ("autogluon.tabular", "wandb")
@@ -81,3 +85,45 @@ def get_library_versions() -> dict[str, str]:
         if version:
             versions[name] = version
     return versions
+
+
+def build_metadata(
+    contract: DatasetContract,
+    features: Mapping[str, Sequence[str]],
+    metrics: Mapping[str, Any],
+    model_format: str,
+    model_name: str,
+    data_fingerprint: str,
+    git_sha: str,
+    library_versions: Mapping[str, str],
+) -> dict[str, Any]:
+    """Składa słownik ``metadata.json`` pakietu modelu (czysty JSON, bez typów numpy).
+
+    - ``dataset``, ``target``, ``positive_class`` pochodzą z kontraktu datasetu,
+    - ``features``: najpierw cechy numeryczne, potem kategoryczne (jak w ``project.yaml``),
+      ``feature_types`` zachowuje podział; cechy spoza ALLOWED FEATURES dają ``ValueError``,
+    - ``metrics``: tylko metryki z ``METRIC_NAMES`` jako ``float`` (bez macierzy pomyłek).
+    """
+    numeric = [str(name) for name in features["numeric"]]
+    categorical = [str(name) for name in features["categorical"]]
+    problems = feature_list_problems(contract, [*numeric, *categorical])
+    if problems:
+        raise ValueError("Cechy modelu niezgodne z kontraktem:\n" + "\n".join(problems))
+    missing = [name for name in METRIC_NAMES if name not in metrics]
+    if missing:
+        raise ValueError(f"Brak metryk modelu: {missing}.")
+    return {
+        "schema_version": METADATA_SCHEMA_VERSION,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "dataset": contract.dataset_id,
+        "target": contract.target,
+        "positive_class": contract.positive_class,
+        "model_format": str(model_format),
+        "model_name": str(model_name),
+        "features": [*numeric, *categorical],
+        "feature_types": {"numeric": numeric, "categorical": categorical},
+        "metrics": {name: float(metrics[name]) for name in METRIC_NAMES},
+        "data_fingerprint": str(data_fingerprint),
+        "git_sha": str(git_sha),
+        "library_versions": {str(name): str(version) for name, version in library_versions.items()},
+    }

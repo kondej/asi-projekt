@@ -4,11 +4,14 @@ import hashlib
 import importlib.metadata
 import json
 import subprocess
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from asi_project import model_metadata
+from asi_project.metrics import METRIC_NAMES, compute_metrics
 
 
 def _fake_git(returncode, stdout=""):
@@ -122,3 +125,83 @@ def test_library_versions_mark_missing_required_library_as_unknown(monkeypatch):
     versions = model_metadata.get_library_versions()
     assert versions["pandas"] == model_metadata.UNKNOWN
     assert versions["numpy"] == "1.2.3"
+
+
+def _build(contract, **overrides):
+    arguments = {
+        "contract": contract,
+        "features": {"numeric": ["num"], "categorical": ["cat"]},
+        "metrics": compute_metrics([0, 0, 1, 1], [0, 1, 1, 1]),
+        "model_format": "sklearn",
+        "model_name": "logistic_regression",
+        "data_fingerprint": "abc",
+        "git_sha": "deadbeef",
+        "library_versions": {"python": "3.11.18"},
+    }
+    arguments.update(overrides)
+    return model_metadata.build_metadata(**arguments)
+
+
+def test_build_metadata_takes_values_from_contract(toy_contract):
+    metadata = _build(toy_contract)
+    assert metadata["dataset"] == "toy"
+    assert metadata["target"] == "label"
+    assert metadata["positive_class"] == "yes"
+    assert metadata["schema_version"] == model_metadata.METADATA_SCHEMA_VERSION == 1
+
+
+def test_build_metadata_keeps_declared_order_numeric_first(toy_contract):
+    metadata = _build(toy_contract)
+    assert metadata["features"] == ["num", "cat"]
+    assert metadata["feature_types"] == {"numeric": ["num"], "categorical": ["cat"]}
+    # Kolejność wynika z deklaracji (numeryczne, potem kategoryczne), a nie z listy ALLOWED.
+    swapped = _build(toy_contract, features={"numeric": ["cat"], "categorical": ["num"]})
+    assert swapped["features"] == ["cat", "num"]
+
+
+def test_build_metadata_keeps_only_main_metrics_as_floats(toy_contract):
+    metrics = _build(toy_contract)["metrics"]
+    assert list(metrics) == list(METRIC_NAMES)
+    assert metrics["f1"] == pytest.approx(0.8)
+    assert all(type(value) is float for value in metrics.values())
+
+
+def test_build_metadata_created_at_is_utc_iso_8601(toy_contract):
+    created = datetime.fromisoformat(_build(toy_contract)["created_at"])
+    assert created.utcoffset() == timedelta(0)
+
+
+def test_build_metadata_is_json_serializable_without_numpy_types(toy_contract):
+    metrics = {name: np.float32(0.5) for name in METRIC_NAMES}
+    features = {"numeric": ("num",), "categorical": ("cat",)}
+    metadata = _build(toy_contract, metrics=metrics, features=features)
+    assert json.loads(json.dumps(metadata)) == metadata
+
+
+def test_build_metadata_stores_provenance_values(toy_contract):
+    metadata = _build(toy_contract)
+    assert metadata["model_format"] == "sklearn"
+    assert metadata["model_name"] == "logistic_regression"
+    assert metadata["data_fingerprint"] == "abc"
+    assert metadata["git_sha"] == "deadbeef"
+    assert metadata["library_versions"] == {"python": "3.11.18"}
+
+
+@pytest.mark.parametrize("feature", ["leak", "other", "label"])
+def test_build_metadata_rejects_feature_outside_allowed_features(toy_contract, feature):
+    features = {"numeric": ["num", feature], "categorical": ["cat"]}
+    with pytest.raises(ValueError, match=feature):
+        _build(toy_contract, features=features)
+
+
+def test_build_metadata_requires_all_main_metrics(toy_contract):
+    metrics = {"accuracy": 0.5, "precision": 0.5, "recall": 0.5}
+    with pytest.raises(ValueError, match="f1"):
+        _build(toy_contract, metrics=metrics)
+
+
+def test_build_metadata_accepts_declared_project_features(project):
+    config = project.config
+    features = {"numeric": config.numeric_features, "categorical": config.categorical_features}
+    metadata = _build(project.contract, features=features)
+    assert metadata["features"] == list(config.model_features)
