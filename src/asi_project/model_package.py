@@ -101,9 +101,7 @@ def load_model_package(
     package_dir = Path(path)
     metadata_path = package_dir / METADATA_FILENAME
     if not metadata_path.is_file():
-        raise FileNotFoundError(
-            f"Brak pliku {METADATA_FILENAME} w pakiecie modelu: {package_dir}."
-        )
+        raise FileNotFoundError(f"Brak pliku {METADATA_FILENAME} w pakiecie modelu: {package_dir}.")
 
     try:
         raw_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
