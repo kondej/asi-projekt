@@ -49,7 +49,9 @@ def test_sklearn_save_and_load_preserves_predictions(tmp_path, toy_contract, toy
 
     metadata = _make_metadata(toy_contract, model_format="sklearn-joblib")
     package_dir = tmp_path / "pkg"
-    saved_path = model_package.save_model_package(model, metadata, package_dir, contract=toy_contract)
+    saved_path = model_package.save_model_package(
+        model, metadata, package_dir, contract=toy_contract
+    )
 
     assert saved_path == package_dir
     assert (package_dir / "model.joblib").is_file()
