@@ -1,4 +1,9 @@
-"""Metadane pakietu modelu: pochodzenie modelu (Git SHA, fingerprint danych, wersje bibliotek)."""
+"""Metadane pakietu modelu: pochodzenie, budowa i walidacja ``metadata.json``.
+
+Lista ``REQUIRED_KEYS`` poniżej dokumentuje kontrakt ``metadata.json``. Zmiana kluczy wymaga
+uzgodnienia z zespołem (Piotr: ``model_package.py``, Denys: testy CI, W&B i smoke) oraz
+aktualizacji sekcji „Klucze metadata.json” w ``src/asi_project/README.md``.
+"""
 
 import hashlib
 import importlib.metadata
@@ -12,6 +17,22 @@ import pytest
 
 from asi_project import model_metadata
 from asi_project.metrics import METRIC_NAMES, compute_metrics
+
+REQUIRED_KEYS = [
+    "schema_version",
+    "created_at",
+    "dataset",
+    "target",
+    "positive_class",
+    "model_format",
+    "model_name",
+    "features",
+    "feature_types",
+    "metrics",
+    "data_fingerprint",
+    "git_sha",
+    "library_versions",
+]
 
 
 def _fake_git(returncode, stdout=""):
@@ -205,3 +226,115 @@ def test_build_metadata_accepts_declared_project_features(project):
     features = {"numeric": config.numeric_features, "categorical": config.categorical_features}
     metadata = _build(project.contract, features=features)
     assert metadata["features"] == list(config.model_features)
+
+
+def test_required_keys_document_the_metadata_contract(toy_contract):
+    assert set(_build(toy_contract)) == set(REQUIRED_KEYS)
+    assert set(model_metadata.REQUIRED_KEYS) == set(REQUIRED_KEYS)
+
+
+def test_validate_metadata_accepts_built_metadata(toy_contract):
+    metadata = _build(toy_contract)
+    assert model_metadata.validate_metadata(metadata) == []
+    assert model_metadata.validate_metadata(metadata, toy_contract) == []
+
+
+@pytest.mark.parametrize("metadata", [None, [], "text"])
+def test_validate_metadata_requires_a_mapping(metadata):
+    assert len(model_metadata.validate_metadata(metadata)) == 1
+
+
+@pytest.mark.parametrize("key", REQUIRED_KEYS)
+def test_validate_metadata_reports_missing_key(toy_contract, key):
+    metadata = _build(toy_contract)
+    del metadata[key]
+    problems = model_metadata.validate_metadata(metadata, toy_contract)
+    assert f"{key}: brak wymaganego klucza." in problems
+
+
+def test_validate_metadata_rejects_feature_outside_contract(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["features"] = ["num", "leak", "cat"]
+    metadata["feature_types"]["numeric"] = ["num", "leak"]
+    problems = model_metadata.validate_metadata(metadata, toy_contract)
+    assert len(problems) == 1
+    assert "leak" in problems[0]
+    # Bez kontraktu walidator nie wie, które cechy są dozwolone.
+    assert model_metadata.validate_metadata(metadata) == []
+
+
+def test_validate_metadata_rejects_wrong_positive_class(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["positive_class"] = "no"
+    assert model_metadata.validate_metadata(metadata, toy_contract) == [
+        "positive_class: oczekiwano 'yes', jest 'no'.",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("dataset", "dataset: oczekiwano 'toy', jest 'other'."),
+        ("target", "target: oczekiwano 'label', jest 'other'."),
+    ],
+)
+def test_validate_metadata_rejects_dataset_or_target_that_differs_from_contract(
+    toy_contract,
+    key,
+    expected,
+):
+    metadata = _build(toy_contract)
+    metadata[key] = "other"
+    assert model_metadata.validate_metadata(metadata, toy_contract) == [expected]
+
+
+@pytest.mark.parametrize("value", [-0.1, 1.5, float("nan"), "0.5", True])
+def test_validate_metadata_rejects_metric_outside_unit_interval(toy_contract, value):
+    metadata = _build(toy_contract)
+    metadata["metrics"]["f1"] = value
+    assert model_metadata.validate_metadata(metadata, toy_contract) == [
+        "metrics.f1: oczekiwana liczba z zakresu [0, 1].",
+    ]
+
+
+def test_validate_metadata_requires_all_main_metrics(toy_contract):
+    metadata = _build(toy_contract)
+    del metadata["metrics"]["recall"]
+    problems = model_metadata.validate_metadata(metadata, toy_contract)
+    assert "metrics.recall: brak metryki." in problems
+
+
+def test_validate_metadata_rejects_other_schema_version(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["schema_version"] = 2
+    assert "schema_version: oczekiwano 1." in model_metadata.validate_metadata(metadata)
+
+
+def test_validate_metadata_rejects_invalid_created_at(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["created_at"] = "yesterday"
+    problems = model_metadata.validate_metadata(metadata)
+    assert "created_at: oczekiwana data w formacie ISO 8601." in problems
+
+
+def test_validate_metadata_requires_features_to_match_feature_types(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["features"] = ["cat", "num"]
+    problems = model_metadata.validate_metadata(metadata, toy_contract)
+    assert len(problems) == 1
+    assert problems[0].startswith("features:")
+
+
+@pytest.mark.parametrize("versions", [{}, {"python": 3}])
+def test_validate_metadata_rejects_invalid_library_versions(toy_contract, versions):
+    metadata = _build(toy_contract)
+    metadata["library_versions"] = versions
+    problems = model_metadata.validate_metadata(metadata)
+    assert len(problems) == 1
+    assert problems[0].startswith("library_versions:")
+
+
+def test_validate_metadata_rejects_empty_text_values(toy_contract):
+    metadata = _build(toy_contract)
+    metadata["git_sha"] = ""
+    assert model_metadata.validate_metadata(metadata) == ["git_sha: oczekiwany niepusty tekst."]

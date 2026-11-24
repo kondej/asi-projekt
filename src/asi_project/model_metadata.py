@@ -2,6 +2,7 @@
 
 import importlib.metadata
 import json
+import math
 import os
 import platform
 import subprocess
@@ -19,6 +20,30 @@ METADATA_SCHEMA_VERSION = 1
 UNKNOWN = "unknown"
 REQUIRED_LIBRARIES = ("scikit-learn", "pandas", "numpy", "joblib")
 OPTIONAL_LIBRARIES = ("autogluon.tabular", "wandb")
+REQUIRED_KEYS = (
+    "schema_version",
+    "created_at",
+    "dataset",
+    "target",
+    "positive_class",
+    "model_format",
+    "model_name",
+    "features",
+    "feature_types",
+    "metrics",
+    "data_fingerprint",
+    "git_sha",
+    "library_versions",
+)
+TEXT_KEYS = (
+    "dataset",
+    "target",
+    "positive_class",
+    "model_format",
+    "model_name",
+    "data_fingerprint",
+    "git_sha",
+)
 
 
 def get_git_sha(cwd: Path | str | None = None) -> str:
@@ -127,3 +152,105 @@ def build_metadata(
         "git_sha": str(git_sha),
         "library_versions": {str(name): str(version) for name, version in library_versions.items()},
     }
+
+
+def _is_text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value)
+
+
+def _is_text_list(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _is_unit_interval(value: Any) -> bool:
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return False
+    return not math.isnan(value) and 0.0 <= value <= 1.0
+
+
+def _created_at_problems(value: Any) -> list[str]:
+    try:
+        datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return ["created_at: oczekiwana data w formacie ISO 8601."]
+    return []
+
+
+def _feature_problems(metadata: dict[str, Any]) -> list[str]:
+    problems = []
+    features = metadata.get("features")
+    if "features" in metadata and (not _is_text_list(features) or not features):
+        problems.append("features: oczekiwana niepusta lista nazw cech.")
+    if "feature_types" in metadata:
+        types = metadata["feature_types"]
+        valid = (
+            isinstance(types, dict)
+            and set(types) == {"numeric", "categorical"}
+            and all(_is_text_list(names) for names in types.values())
+        )
+        if not valid:
+            problems.append("feature_types: oczekiwana mapa numeric i categorical (listy nazw).")
+        elif _is_text_list(features) and features != [*types["numeric"], *types["categorical"]]:
+            problems.append("features: musi być sumą feature_types.numeric i .categorical.")
+    return problems
+
+
+def _metrics_problems(metrics: Any) -> list[str]:
+    if not isinstance(metrics, dict):
+        return ["metrics: oczekiwana mapa nazwa metryki -> liczba."]
+    problems = [f"metrics.{name}: brak metryki." for name in METRIC_NAMES if name not in metrics]
+    for name, value in metrics.items():
+        if not _is_unit_interval(value):
+            problems.append(f"metrics.{name}: oczekiwana liczba z zakresu [0, 1].")
+    return problems
+
+
+def _library_problems(versions: Any) -> list[str]:
+    valid = (
+        isinstance(versions, dict)
+        and bool(versions)
+        and all(_is_text(name) and _is_text(version) for name, version in versions.items())
+    )
+    if valid:
+        return []
+    return ["library_versions: oczekiwana niepusta mapa nazwa biblioteki -> wersja."]
+
+
+def validate_metadata(
+    metadata: Any,
+    contract: DatasetContract | None = None,
+) -> list[str]:
+    """Sprawdza kontrakt ``metadata.json``. Zwraca listę problemów (pusta lista = OK).
+
+    Sprawdza wymagane klucze i typy, zakres metryk [0, 1] oraz spójność cech. Jeśli podano
+    ``contract``, sprawdza też zgodność ``dataset``, ``target`` i ``positive_class`` oraz to,
+    czy cechy należą do ALLOWED FEATURES.
+    """
+    if not isinstance(metadata, dict):
+        return ["metadata: oczekiwano słownika (zawartość metadata.json)."]
+    problems = [f"{key}: brak wymaganego klucza." for key in REQUIRED_KEYS if key not in metadata]
+    if "schema_version" in metadata and metadata["schema_version"] != METADATA_SCHEMA_VERSION:
+        problems.append(f"schema_version: oczekiwano {METADATA_SCHEMA_VERSION}.")
+    if "created_at" in metadata:
+        problems.extend(_created_at_problems(metadata["created_at"]))
+    for key in TEXT_KEYS:
+        if key in metadata and not _is_text(metadata[key]):
+            problems.append(f"{key}: oczekiwany niepusty tekst.")
+    problems.extend(_feature_problems(metadata))
+    if "metrics" in metadata:
+        problems.extend(_metrics_problems(metadata["metrics"]))
+    if "library_versions" in metadata:
+        problems.extend(_library_problems(metadata["library_versions"]))
+    if contract is not None:
+        expected = {
+            "dataset": contract.dataset_id,
+            "target": contract.target,
+            "positive_class": contract.positive_class,
+        }
+        for key, value in expected.items():
+            if key in metadata and metadata[key] != value:
+                problems.append(f"{key}: oczekiwano {value!r}, jest {metadata[key]!r}.")
+        features = metadata.get("features")
+        if features and _is_text_list(features):
+            problems.extend(feature_list_problems(contract, features))
+    return problems
