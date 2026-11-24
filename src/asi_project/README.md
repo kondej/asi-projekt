@@ -24,7 +24,7 @@ logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro 
 | `pipelines/data_science/` | S2 → S3 | split → trening Pipeline → ewaluacja; w S3 tracking W&B i AutoGluon |
 | `pipeline_registry.py`, `settings.py` | S2 | pliki projektu Kedro (rejestracja pipeline'ów, ustawienia) |
 | `model_metadata.py` | S3 | budowa i walidacja `metadata.json`: `build_metadata`, `validate_metadata`, pochodzenie modelu (`get_git_sha`, `get_data_fingerprint`, `get_library_versions`); używany przez `model_package.py`, W&B i smoke modelu |
-| `model_package.py` | S3 | zapis i odczyt pakietu modelu: katalog z modelem i `metadata.json` (cechy, target i klasa pozytywna, metryki, git SHA, fingerprint danych, wersje bibliotek); wspólny dla Kedro, smoke modelu i API |
+| `model_package.py` | S3 | zapis i odczyt pakietu modelu (`ModelPackage`, `save_model_package`, `load_model_package`): katalog z modelem (`model.joblib` dla `sklearn-joblib` lub `model/` dla `autogluon`) i `metadata.json`; wspólny dla Kedro, smoke test modelu i API |
 | `api/` | S4 | usługa predykcji — patrz `api/README.md` |
 
 Zasada: moduły aktywne w Sprincie 1 nie importują Kedro, W&B, AutoGluona, FastAPI ani innych
@@ -70,7 +70,7 @@ kluczy wymaga zmiany tego testu i uzgodnienia z zespołem.
 | `dataset` | tekst | id datasetu z kontraktu (`datasets.yaml`) |
 | `target` | tekst | kolumna docelowa z kontraktu |
 | `positive_class` | tekst | klasa pozytywna z kontraktu |
-| `model_format` | tekst | format modelu w pakiecie (np. `sklearn`, `autogluon`) |
+| `model_format` | tekst | format modelu w pakiecie (`sklearn-joblib`, `autogluon`) |
 | `model_name` | tekst | nazwa modelu, np. `logistic_regression` |
 | `features` | lista tekstów | cechy wejściowe: najpierw numeryczne, potem kategoryczne (tylko ALLOWED FEATURES) |
 | `feature_types` | mapa | `numeric` i `categorical`: listy nazw; `features` = `numeric` + `categorical` |
