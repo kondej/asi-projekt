@@ -6,6 +6,7 @@ Logika przetwarzania zostaje w ``asi_project.data``, ``asi_project.model`` i
 """
 
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,10 +14,17 @@ import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.pipeline import Pipeline
 
-from asi_project.config import ConfigError, DatasetContract, load_registry
+from asi_project.config import ConfigError, DatasetContract, load_project_config, load_registry
 from asi_project.data import make_xy, split_train_test
 from asi_project.metrics import build_metrics_record, compute_metrics, validate_metrics_record
 from asi_project.model import build_baseline_pipeline, make_dummy
+from asi_project.model_metadata import (
+    build_metadata,
+    get_data_fingerprint,
+    get_git_sha,
+    get_library_versions,
+)
+from asi_project.model_package import MODEL_FORMAT_SKLEARN, save_model_package
 
 
 def get_dataset_contract(dataset: str) -> DatasetContract:
@@ -121,3 +129,39 @@ def evaluate_models(
     if problems:
         raise ValueError("metrics nie spełniają kontraktu:\n" + "\n".join(problems))
     return record
+
+
+def _extract_model_metrics(metrics: Mapping[str, Any], model_name: str) -> Mapping[str, Any]:
+    models = metrics.get("models")
+    if isinstance(models, Mapping) and model_name in models:
+        return models[model_name]
+    if model_name in metrics and isinstance(metrics[model_name], Mapping):
+        return metrics[model_name]
+    return metrics
+
+
+def build_model_package(
+    model: Any,
+    metrics: Mapping[str, Any],
+    dataset: str,
+    features: Mapping[str, Sequence[str]],
+    data_mode: str,
+    package_path: str | Path,
+    model_name: str = "logistic_regression",
+    model_format: str = MODEL_FORMAT_SKLEARN,
+) -> dict[str, Any]:
+    contract = get_dataset_contract(dataset)
+    config = load_project_config()
+    model_metrics = _extract_model_metrics(metrics, model_name)
+    metadata = build_metadata(
+        contract=contract,
+        features=features,
+        metrics=model_metrics,
+        model_format=model_format,
+        model_name=model_name,
+        data_fingerprint=get_data_fingerprint(config, contract, data_mode),
+        git_sha=get_git_sha(),
+        library_versions=get_library_versions(),
+    )
+    save_model_package(model, metadata, package_path, contract=contract)
+    return metadata
