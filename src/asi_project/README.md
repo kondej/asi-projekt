@@ -23,8 +23,8 @@ logiki (np. `normalize_input` działa identycznie w notebooku, w pipeline Kedro 
 | `pipelines/data_processing/` | S2 | nody: walidacja → input normalization → training-only filtering (funkcje z `data.py`) |
 | `pipelines/data_science/` | S2 → S3 | split → trening Pipeline → ewaluacja; w S3 tracking W&B i AutoGluon |
 | `pipeline_registry.py`, `settings.py` | S2 | pliki projektu Kedro (rejestracja pipeline'ów, ustawienia) |
-| `model_metadata.py` | S3 | budowa i walidacja `metadata.json`: `build_metadata`, `validate_metadata`, pochodzenie modelu (`get_git_sha`, `get_data_fingerprint`, `get_library_versions`); używany przez `model_package.py`, W&B i smoke modelu |
-| `model_package.py` | S3 | zapis i odczyt pakietu modelu (`ModelPackage`, `save_model_package`, `load_model_package`): katalog z modelem (`model.joblib` dla `sklearn-joblib` lub `model/` dla `autogluon`) i `metadata.json`; wspólny dla Kedro, smoke test modelu i API |
+| `model_metadata.py` | S3 | budowa i walidacja `metadata.json`: `build_metadata`, `validate_metadata`, pochodzenie modelu (`get_git_sha`, `get_data_fingerprint`, `get_library_versions`) |
+| `model_package.py` | S3 | zapis, odczyt i predykcja z pakietu modelu: katalog z modelem (`model.joblib` lub `model/`) i `metadata.json` |
 | `api/` | S4 | usługa predykcji — patrz `api/README.md` |
 
 Zasada: moduły aktywne w Sprincie 1 nie importują Kedro, W&B, AutoGluona, FastAPI ani innych
