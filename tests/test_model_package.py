@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from asi_project import model_metadata, model_package
+from asi_project.data import encode_target, filter_training_rows, make_xy, normalize_input
 from asi_project.metrics import compute_metrics
 from asi_project.model import build_baseline_pipeline
 
@@ -163,3 +164,118 @@ def test_load_raises_when_autogluon_model_dir_missing(tmp_path, toy_contract):
 
     with pytest.raises(FileNotFoundError, match="model/"):
         model_package.load_model_package(pkg_dir)
+
+
+def test_predict_from_package_sklearn_normalizes_reorders_and_drops_extra(
+    tmp_path, toy_contract, toy_frame
+):
+    features = {"numeric": ["num"], "categorical": ["cat"]}
+    clean = normalize_input(toy_frame)
+    X = clean[["num", "cat"]]
+    y = encode_target(clean["label"], toy_contract.positive_class)
+
+    model = build_baseline_pipeline(features["numeric"], features["categorical"])
+    model.fit(X, y)
+
+    metadata = _make_metadata(toy_contract, model_format="sklearn-joblib")
+    pkg_dir = model_package.save_model_package(
+        model, metadata, tmp_path / "pkg", contract=toy_contract
+    )
+    loaded = model_package.load_model_package(pkg_dir, contract=toy_contract)
+
+    raw_input = pd.DataFrame(
+        {
+            "extra_col": [999, 888, 777],
+            "cat": [" a ", "  b", ""],
+            "num": [0.0, 1.0, 2.0],
+            "label": ["yes", "no", "no"],
+        },
+        index=[10, 20, 30],
+    )
+    out = model_package.predict_from_package(loaded, raw_input)
+
+    model_package.validate_prediction_output(out, len(raw_input))
+    assert list(out.index) == [10, 20, 30]
+    expected_X = normalize_input(raw_input[["num", "cat"]])
+    np.testing.assert_allclose(out["probability"], model.predict_proba(expected_X)[:, 1])
+    np.testing.assert_array_equal(out["prediction"], model.predict(expected_X))
+
+
+def test_predict_from_package_sample_five_rows(tmp_path, project):
+    config, contract, sample = project.config, project.contract, project.sample
+    df_train = filter_training_rows(normalize_input(sample), contract)
+    features = {
+        "numeric": list(config.numeric_features),
+        "categorical": list(config.categorical_features),
+    }
+    X, y = make_xy(df_train, contract, config.model_features)
+
+    model = build_baseline_pipeline(features["numeric"], features["categorical"])
+    model.fit(X, y)
+    metrics = compute_metrics(y, model.predict(X))
+    metadata = model_metadata.build_metadata(
+        contract=contract,
+        features=features,
+        metrics=metrics,
+        model_format="sklearn-joblib",
+        model_name="baseline",
+        data_fingerprint="sample",
+        git_sha="deadbeef",
+        library_versions={"python": "3.11"},
+    )
+
+    pkg_dir = model_package.save_model_package(
+        model, metadata, tmp_path / "sample_pkg", contract=contract
+    )
+    loaded = model_package.load_model_package(pkg_dir, contract=contract)
+
+    five_rows = sample.head(5)
+    out = model_package.predict_from_package(loaded, five_rows)
+    model_package.validate_prediction_output(out, 5)
+
+
+def test_predict_from_package_autogluon_positive_class(tmp_path, toy_contract):
+    class FakeAG:
+        def predict_proba(self, df: pd.DataFrame) -> pd.DataFrame:
+            return pd.DataFrame({"no": [0.8, 0.2], "yes": [0.2, 0.8]}, index=df.index)
+
+        def predict(self, df: pd.DataFrame) -> pd.Series:
+            return pd.Series(["no", "yes"], index=df.index)
+
+    metadata = _make_metadata(toy_contract, model_format="autogluon", model_name="ag_fast")
+    pkg = model_package.ModelPackage(model=FakeAG(), metadata=metadata, path=tmp_path)
+    df_in = pd.DataFrame({"cat": ["a", "b"], "num": [1.0, 2.0]})
+
+    out = model_package.predict_from_package(pkg, df_in)
+    model_package.validate_prediction_output(out, 2)
+    assert list(out["prediction"]) == [0, 1]
+    np.testing.assert_allclose(out["probability"], [0.2, 0.8])
+
+
+def test_predict_from_package_raises_on_missing_feature(tmp_path, toy_contract, toy_frame):
+    features = {"numeric": ["num"], "categorical": ["cat"]}
+    clean = normalize_input(toy_frame)
+    model = build_baseline_pipeline(features["numeric"], features["categorical"])
+    model.fit(clean[["num", "cat"]], encode_target(clean["label"], toy_contract.positive_class))
+    metadata = _make_metadata(toy_contract)
+    pkg = model_package.ModelPackage(model=model, metadata=metadata, path=tmp_path)
+
+    with pytest.raises(ValueError, match="cat"):
+        model_package.predict_from_package(pkg, pd.DataFrame({"num": [1.0, 2.0]}))
+
+
+@pytest.mark.parametrize(
+    "bad_df,n_rows",
+    [
+        (pd.DataFrame({"pred": [0, 1], "probability": [0.1, 0.9]}), 2),
+        (pd.DataFrame({"prediction": [0, 1], "probability": [0.1, 0.9]}), 3),
+        (pd.DataFrame({"prediction": [0.0, 1.0], "probability": [0.1, 0.9]}), 2),
+        (pd.DataFrame({"prediction": [0, 2], "probability": [0.1, 0.9]}), 2),
+        (pd.DataFrame({"prediction": [0, 1], "probability": [0.1, 1.2]}), 2),
+        (pd.DataFrame({"prediction": [0, 1], "probability": [-0.1, 0.9]}), 2),
+        (pd.DataFrame({"prediction": [0, 1], "probability": [0.1, np.nan]}), 2),
+    ],
+)
+def test_validate_prediction_output_rejects_invalid(bad_df, n_rows):
+    with pytest.raises(ValueError):
+        model_package.validate_prediction_output(bad_df, n_rows)
