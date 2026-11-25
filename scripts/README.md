@@ -11,6 +11,27 @@
 | `check_metrics.py`, `project_status.py`, `run_notebook.py` | kroki CI |
 | `build_issues.py` | generowanie `github_issues/` z `docs/sprints/` |
 | `smoke_datasets.py` | narzędzie prowadzącej: smoke prawdziwych źródeł wszystkich datasetów |
+| `smoke_model.py` | S3, poza CI: pobranie modelu `production` z W&B → wczytanie bez treningu → predykcja 5 wierszy → kontrola schematu |
+
+## Smoke modelu `production` (Sprint 3, poza CI)
+
+Sprawdza, czy model `production` da się pobrać z W&B i użyć bez treningu. Uruchamiamy go
+w świeżym procesie, niezależnie od `kedro run`. Wymaga konta W&B i dostępu do zespołu,
+dlatego nie jest częścią CI (w CI `tests/test_smoke_model.py` używa atrapy `wandb`).
+
+```bash
+wandb login                                         # jednorazowo
+export WANDB_PROJECT=<projekt> WANDB_ENTITY=<zespół>
+python scripts/smoke_model.py                       # <entity>/<projekt>/<dataset>-model:production
+python scripts/smoke_model.py --artifact <entity>/<projekt>/<nazwa>:production
+```
+
+Kroki: pobranie artefaktu do katalogu tymczasowego → `load_model_package` (walidacja
+`metadata.json` względem kontraktu datasetu) → `predict_from_package` dla 5 wierszy
+z `data/01_raw/sample.csv` → `validate_prediction_output`. Skrypt wypisuje wersję artefaktu,
+`git_sha`, metryki i predykcje oraz kończy się `SMOKE OK`.
+
+Kody wyjścia: `0` — OK, `1` — zły pakiet lub predykcja, `2` — brak dostępu do W&B.
 
 ## Kolejne etapy (Sprinty 3–6)
 
