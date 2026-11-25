@@ -26,3 +26,5 @@ split:
   strategy: stratified_random
   test_size: 0.2
   random_state: 42
+
+model_package_path: data/06_models/model_package

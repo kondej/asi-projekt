@@ -3,6 +3,7 @@
 from kedro.pipeline import Pipeline, node
 
 from asi_project.pipelines.data_science.nodes import (
+    build_model_package,
     evaluate_models,
     make_features_target,
     split_data,
@@ -47,6 +48,19 @@ def create_pipeline(**kwargs) -> Pipeline:
                 ],
                 outputs="metrics",
                 name="evaluate_models",
+            ),
+            node(
+                func=build_model_package,
+                inputs=[
+                    "model",
+                    "metrics",
+                    "params:dataset",
+                    "params:features",
+                    "params:data_mode",
+                    "params:model_package_path",
+                ],
+                outputs="model_package_metadata",
+                name="build_model_package",
             ),
         ],
     )

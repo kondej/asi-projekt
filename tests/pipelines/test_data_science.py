@@ -1,11 +1,18 @@
-"""Testy nodów pipeline'u data_science (na próbce CI, bez uruchamiania Kedro)."""
-
 import pytest
+from sklearn.dummy import DummyClassifier
 
 from asi_project.config import ConfigError
 from asi_project.data import filter_training_rows, normalize_input
 from asi_project.metrics import MODEL_KEYS, validate_metrics_record
+from asi_project.model_metadata import validate_metadata
+from asi_project.model_package import (
+    METADATA_FILENAME,
+    MODEL_FORMAT_SKLEARN,
+    SKLEARN_MODEL_FILENAME,
+    load_model_package,
+)
 from asi_project.pipelines.data_science.nodes import (
+    build_model_package,
     evaluate_models,
     make_features_target,
     split_data,
@@ -16,7 +23,6 @@ from asi_project.pipelines.data_science.pipeline import create_pipeline
 
 @pytest.fixture
 def training_data(project):
-    """Dane po data_processing: input normalization, a potem training-only filtering."""
     return filter_training_rows(normalize_input(project.sample), project.contract)
 
 
@@ -49,7 +55,6 @@ def train_test(project, xy, split_params):
 
 @pytest.fixture
 def evaluation(project, train_test, features, split_params):
-    """Wynik node'a ewaluacji razem z danymi, na których powstał."""
     X_train, X_test, y_train, y_test = train_test
     model, dummy_model = train_models(X_train, y_train, features)
     metrics = evaluate_models(
@@ -176,6 +181,39 @@ def test_evaluate_models_rejects_unknown_data_mode(project, train_test, features
         )
 
 
+def test_build_model_package_saves_toy_model_and_valid_metadata(project, features, tmp_path):
+    toy_model = DummyClassifier(strategy="most_frequent").fit([[0], [1], [1]], [0, 1, 1])
+    metrics = {
+        "models": {
+            "logistic_regression": {
+                "accuracy": 0.75,
+                "precision": 0.8,
+                "recall": 0.7,
+                "f1": 0.74,
+            }
+        }
+    }
+    package_dir = tmp_path / "model_package"
+
+    metadata = build_model_package(
+        model=toy_model,
+        metrics=metrics,
+        dataset=project.config.dataset_id,
+        features=features,
+        data_mode="sample",
+        package_path=package_dir,
+    )
+
+    assert (package_dir / SKLEARN_MODEL_FILENAME).is_file()
+    assert (package_dir / METADATA_FILENAME).is_file()
+    assert validate_metadata(metadata, project.contract) == []
+
+    loaded = load_model_package(package_dir, contract=project.contract)
+    assert loaded.metadata["model_name"] == "logistic_regression"
+    assert loaded.metadata["model_format"] == MODEL_FORMAT_SKLEARN
+    assert list(loaded.model.predict([[0], [1]])) == [1, 1]
+
+
 def test_pipeline_uses_agreed_dataset_and_parameter_names():
     pipeline = create_pipeline()
 
@@ -185,7 +223,15 @@ def test_pipeline_uses_agreed_dataset_and_parameter_names():
         "params:features",
         "params:split",
         "params:data_mode",
+        "params:model_package_path",
     }
-    assert {"X_train", "X_test", "y_train", "y_test", "model", "dummy_model", "metrics"} <= (
-        pipeline.all_outputs()
-    )
+    assert {
+        "X_train",
+        "X_test",
+        "y_train",
+        "y_test",
+        "model",
+        "dummy_model",
+        "metrics",
+        "model_package_metadata",
+    } <= pipeline.all_outputs()
