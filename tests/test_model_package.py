@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -279,3 +281,75 @@ def test_predict_from_package_raises_on_missing_feature(tmp_path, toy_contract, 
 def test_validate_prediction_output_rejects_invalid(bad_df, n_rows):
     with pytest.raises(ValueError):
         model_package.validate_prediction_output(bad_df, n_rows)
+
+
+_FRESH_PROCESS_SCRIPT = """
+import json
+import sys
+
+import pandas as pd
+
+from asi_project.model_package import (
+    load_model_package,
+    predict_from_package,
+    validate_prediction_output,
+)
+
+package_dir, sample_path = sys.argv[1], sys.argv[2]
+package = load_model_package(package_dir)
+rows = pd.read_csv(sample_path).head(5)
+out = predict_from_package(package, rows)
+validate_prediction_output(out, 5)
+banned = sorted(name for name in ("wandb", "autogluon") if name in sys.modules)
+print(json.dumps({"predictions": out.to_dict(orient="list"), "banned_modules": banned}))
+"""
+
+
+def test_package_roundtrip_in_fresh_process(tmp_path, project):
+    """Zapis w tym procesie, odczyt i predykcja w świeżym procesie (bez W&B i bez fit)."""
+    config, contract, sample = project.config, project.contract, project.sample
+    features = {
+        "numeric": list(config.numeric_features),
+        "categorical": list(config.categorical_features),
+    }
+    df_train = filter_training_rows(normalize_input(sample), contract)
+    X, y = make_xy(df_train, contract, config.model_features)
+    model = build_baseline_pipeline(features["numeric"], features["categorical"])
+    model.fit(X, y)
+    metadata = model_metadata.build_metadata(
+        contract=contract,
+        features=features,
+        metrics=compute_metrics(y, model.predict(X)),
+        model_format="sklearn-joblib",
+        model_name="baseline",
+        data_fingerprint="sample",
+        git_sha="deadbeef",
+        library_versions={"python": "3.11"},
+    )
+    pkg_dir = model_package.save_model_package(
+        model, metadata, tmp_path / "fresh_pkg", contract=contract
+    )
+    expected = model_package.predict_from_package(
+        model_package.load_model_package(pkg_dir, contract=contract), sample.head(5)
+    )
+
+    src_dir = Path(model_package.__file__).resolve().parents[1]
+    env = {
+        **os.environ,
+        "WANDB_MODE": "disabled",
+        "PYTHONPATH": os.pathsep.join(filter(None, [str(src_dir), os.environ.get("PYTHONPATH")])),
+    }
+    result = subprocess.run(
+        [sys.executable, "-c", _FRESH_PROCESS_SCRIPT, str(pkg_dir), str(config.ci_sample_path)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        env=env,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["banned_modules"] == []
+    assert report["predictions"]["prediction"] == expected["prediction"].tolist()
+    np.testing.assert_allclose(report["predictions"]["probability"], expected["probability"])

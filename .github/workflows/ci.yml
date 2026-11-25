@@ -90,6 +90,8 @@ jobs:
 # Testy nodów i pakietu modelu dodaje zespół w tests/; pytest je wykrywa.
       # S2: `kedro run --env ci` należy uruchamiać na próbce CI po ukończeniu pipeline'u.
       # Nie uruchamiamy go bezwarunkowo w pustym szablonie (brak nodów).
-      # S3: testy zapisu i odczytu modelu bez logowania do W&B ani treningu AutoGluona.
+      # S3: tests/test_model_package.py — zapis → odczyt → predykcja pakietu modelu
+      #     (także w świeżym procesie), bez W&B (WANDB_MODE=disabled), bez pełnych danych
+      #     i bez treningu AutoGluona (mock TabularPredictor). Smoke `production` — poza CI.
       # S4: testy API (tests/api/) bez prawdziwego modelu i bazy danych.
       # S6 (OPTIONAL): deploy z CI jako osobny workflow.
