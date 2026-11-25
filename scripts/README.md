@@ -11,7 +11,28 @@
 | `check_metrics.py`, `project_status.py`, `run_notebook.py` | kroki CI |
 | `build_issues.py` | generowanie `github_issues/` z `docs/sprints/` |
 | `smoke_datasets.py` | narzędzie prowadzącej: smoke prawdziwych źródeł wszystkich datasetów |
+| `publish_model.py` | S3: publikacja gotowego pakietu modelu jako W&B Artifact (typ `model`) z aliasem `production` — bez treningu |
 | `smoke_model.py` | S3, poza CI: pobranie modelu `production` z W&B → wczytanie bez treningu → predykcja 5 wierszy → kontrola schematu |
+
+## Publikacja modelu `production` (Sprint 3)
+
+Skrypt wczytuje istniejący pakiet przez `load_model_package`, sprawdza `metadata.json`
+(`validate_metadata`) i dopiero wtedy wysyła katalog pakietu do W&B. Nie uruchamia treningu.
+
+```bash
+kedro run                                   # tworzy data/06_models/model_package/
+wandb login                                 # jednorazowo, klucz API trzymamy poza repo
+export WANDB_PROJECT=<projekt> WANDB_ENTITY=<zespół lub login>
+python scripts/publish_model.py --dry-run   # tylko walidacja pakietu, bez W&B
+python scripts/publish_model.py --package data/06_models/model_package --alias production
+```
+
+- Nazwa artefaktu: `<dataset>-model` (np. `online_shoppers-model`), typ `model`; można ją zmienić `--name`.
+- Metadane artefaktu = zawartość `metadata.json`.
+- Alias `production` w W&B wskazuje zawsze jedną wersję — nowa publikacja przenosi go na nowy pakiet.
+- Pobranie (np. w smoke modelu): `wandb.Api().artifact("<entity>/<projekt>/online_shoppers-model:production")`.
+- Skrypt nie jest uruchamiany w CI (wymaga konta W&B); w CI testy używają atrapy `wandb`
+  (`tests/test_publish_model.py`).
 
 ## Smoke modelu `production` (Sprint 3, poza CI)
 
