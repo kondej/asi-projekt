@@ -6,6 +6,7 @@ from asi_project.pipelines.data_science.nodes import (
     build_model_package,
     evaluate_models,
     make_features_target,
+    run_experiments,
     split_data,
     train_models,
 )
@@ -50,6 +51,25 @@ def create_pipeline(**kwargs) -> Pipeline:
                 name="evaluate_models",
             ),
             node(
+                func=run_experiments,
+                inputs=[
+                    "model",
+                    "X_train",
+                    "X_test",
+                    "y_train",
+                    "y_test",
+                    "metrics",
+                    "params:dataset",
+                    "params:features",
+                    "params:data_mode",
+                    "params:experiments",
+                    "params:model_package_path",
+                    "params:production_model",
+                ],
+                outputs="experiment_comparison",
+                name="run_experiments",
+            ),
+            node(
                 func=build_model_package,
                 inputs=[
                     "model",
@@ -58,6 +78,8 @@ def create_pipeline(**kwargs) -> Pipeline:
                     "params:features",
                     "params:data_mode",
                     "params:model_package_path",
+                    "params:production_model",
+                    "experiment_comparison",
                 ],
                 outputs="model_package_metadata",
                 name="build_model_package",

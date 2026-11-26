@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import pandas as pd
 import pytest
 from sklearn.dummy import DummyClassifier
 
@@ -15,6 +20,7 @@ from asi_project.pipelines.data_science.nodes import (
     build_model_package,
     evaluate_models,
     make_features_target,
+    run_experiments,
     split_data,
     train_models,
 )
@@ -214,6 +220,140 @@ def test_build_model_package_saves_toy_model_and_valid_metadata(project, feature
     assert list(loaded.model.predict([[0], [1]])) == [1, 1]
 
 
+def test_run_experiments_returns_empty_table_when_disabled(project, evaluation, features):
+    metrics, (X_train, X_test, y_train, y_test) = evaluation
+    model, _ = train_models(X_train, y_train, features)
+
+    table = run_experiments(
+        model=model,
+        X_train=X_train,
+        X_test=X_test,
+        y_train=y_train,
+        y_test=y_test,
+        metrics=metrics,
+        dataset=project.config.dataset_id,
+        features=features,
+        data_mode="sample",
+        experiments={"enabled": False},
+    )
+
+    assert table.empty
+    assert {"model_name", "model_format", "f1", "predict_time_ms", "package_size_kb"} <= set(
+        table.columns
+    )
+
+
+def test_run_experiments_compares_baseline_and_autogluon_with_mocks(
+    project, evaluation, features, monkeypatch, tmp_path
+):
+    metrics, (X_train, X_test, y_train, y_test) = evaluation
+    model, _ = train_models(X_train, y_train, features)
+
+    logged_runs = []
+
+    class FakeRun:
+        def __init__(self, kwargs):
+            self.kwargs = kwargs
+            self.logged = {}
+
+        def log(self, payload):
+            self.logged.update(payload)
+
+        def finish(self):
+            logged_runs.append({"init": self.kwargs, "log": self.logged})
+
+    fake_wandb = ModuleType("wandb")
+    fake_wandb.init = lambda **kwargs: FakeRun(kwargs)
+    monkeypatch.setitem(sys.modules, "wandb", fake_wandb)
+    monkeypatch.delenv("WANDB_MODE", raising=False)
+
+    class FakePredictor:
+        def __init__(self, label, problem_type, eval_metric, path, verbosity=0):
+            self.label = label
+            self.path = str(path)
+
+        def fit(self, train_df, **kwargs):
+            target = Path(self.path)
+            target.mkdir(parents=True, exist_ok=True)
+            (target / "predictor.pkl").write_text("fake", encoding="utf-8")
+            return self
+
+        def clone(self, target_path, *, dirs_exist_ok=False):
+            target = Path(target_path)
+            target.mkdir(parents=True, exist_ok=dirs_exist_ok)
+            (target / "predictor.pkl").write_text("cloned", encoding="utf-8")
+            return target_path
+
+        @classmethod
+        def load(cls, path):
+            return cls("Revenue", "binary", "f1", path)
+
+        def predict(self, df):
+            return pd.Series([0] * len(df), index=df.index)
+
+        def predict_proba(self, df):
+            return pd.DataFrame({0: [0.8] * len(df), 1: [0.2] * len(df)}, index=df.index)
+
+    fake_ag = ModuleType("autogluon")
+    fake_tabular = ModuleType("autogluon.tabular")
+    fake_tabular.TabularPredictor = FakePredictor
+    monkeypatch.setitem(sys.modules, "autogluon", fake_ag)
+    monkeypatch.setitem(sys.modules, "autogluon.tabular", fake_tabular)
+
+    pkg_dir = tmp_path / "model_package"
+    pkg_dir.mkdir()
+    (pkg_dir / SKLEARN_MODEL_FILENAME).write_text("stale", encoding="utf-8")
+    production_model = {"name": "ag_fast", "format": "autogluon"}
+
+    table = run_experiments(
+        model=model,
+        X_train=X_train,
+        X_test=X_test,
+        y_train=y_train,
+        y_test=y_test,
+        metrics=metrics,
+        dataset=project.config.dataset_id,
+        features=features,
+        data_mode="sample",
+        experiments={
+            "enabled": True,
+            "wandb_enabled": True,
+            "wandb_project": "asi-test",
+            "autogluon_configs": {
+                "ag_fast": {"time_limit": 10, "presets": "medium_quality"},
+            },
+        },
+        package_path=pkg_dir,
+        production_model=production_model,
+    )
+    metadata = build_model_package(
+        model=model,
+        metrics=metrics,
+        dataset=project.config.dataset_id,
+        features=features,
+        data_mode="sample",
+        package_path=pkg_dir,
+        production_model=production_model,
+        experiment_comparison=table,
+    )
+
+    assert list(table["model_name"]) == ["logistic_regression", "ag_fast"]
+    assert list(table["model_format"]) == ["sklearn-joblib", "autogluon"]
+    assert (table["package_size_kb"] > 0).all()
+    assert (table["predict_time_ms"] >= 0).all()
+    assert not (pkg_dir / SKLEARN_MODEL_FILENAME).exists()
+    assert (pkg_dir / "model" / "predictor.pkl").is_file()
+    assert metadata["model_name"] == "ag_fast"
+    assert metadata["model_format"] == "autogluon"
+    assert len(logged_runs) == 2
+    assert {run["init"]["config"]["model_name"] for run in logged_runs} == {
+        "logistic_regression",
+        "ag_fast",
+    }
+    assert all("git_sha" in run["init"]["config"] for run in logged_runs)
+    assert all("data_fingerprint" in run["init"]["config"] for run in logged_runs)
+
+
 def test_pipeline_uses_agreed_dataset_and_parameter_names():
     pipeline = create_pipeline()
 
@@ -224,6 +364,8 @@ def test_pipeline_uses_agreed_dataset_and_parameter_names():
         "params:split",
         "params:data_mode",
         "params:model_package_path",
+        "params:experiments",
+        "params:production_model",
     }
     assert {
         "X_train",
@@ -234,4 +376,5 @@ def test_pipeline_uses_agreed_dataset_and_parameter_names():
         "dummy_model",
         "metrics",
         "model_package_metadata",
+        "experiment_comparison",
     } <= pipeline.all_outputs()

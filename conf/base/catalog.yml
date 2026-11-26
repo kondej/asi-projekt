@@ -20,3 +20,7 @@ dummy_model:
 metrics:
   type: json.JSONDataset
   filepath: data/08_reporting/metrics.json
+
+experiment_comparison:
+  type: pandas.CSVDataset
+  filepath: data/08_reporting/experiment_comparison.csv

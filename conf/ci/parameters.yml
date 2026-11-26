@@ -1,1 +1,10 @@
 data_mode: sample
+
+production_model:
+  name: logistic_regression
+  format: sklearn-joblib
+
+experiments:
+  enabled: false
+  wandb_enabled: false
+  autogluon_configs: {}
