@@ -28,3 +28,23 @@ split:
   random_state: 42
 
 model_package_path: data/06_models/model_package
+
+production_model:
+  name: ag_fast
+  format: autogluon
+
+experiments:
+  enabled: true
+  wandb_enabled: true
+  wandb_project: null
+  wandb_entity: null
+  autogluon_configs:
+    ag_fast:
+      time_limit: 30
+      presets: medium_quality
+      hyperparameters:
+        GBM: {}
+        CAT: {}
+    ag_good:
+      time_limit: 60
+      presets: good_quality
